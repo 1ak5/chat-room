@@ -261,26 +261,6 @@ body {
   color: var(--primary-color);
 }
 
-/* New Scroll Lock Toggle Button */
-.toggle-scroll-lock-btn {
-    position: absolute;
-    
- 
-    
-
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-
-  
-    z-index: 10; /* Ensure it's above other elements if needed */
-}
-
-
-
-
 /* Online Users List */
 .online-users-list {
   font-size: 0.85em;
@@ -309,30 +289,22 @@ body {
 }
 
 
-/* Updated Chat Main and Messages Container Styles */
+/* Reverted Chat Main and Messages Container Styles */
 .chat-main {
-    flex-grow: 1;
-    padding: 20px;
-    background-color: var(--light-gray);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* chat-main itself does not scroll, messages-container does */
+  flex-grow: 1;
+  padding: 20px;
+  overflow-y: auto; /* Enables scrolling for messages */
+  background-color: var(--light-gray);
+  display: flex;
+  flex-direction: column;
 }
 
 .messages-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    padding-bottom: 10px;
-    flex-grow: 1; /* Allow messages-container to fill available space */
-    /* Default state (unlocked) */
-    overflow-y: auto; /* Allow scrolling */
-    justify-content: flex-start; /* Content starts from top */
-}
-
-.messages-container.scroll-locked {
-    overflow-y: hidden; /* Prevent manual scrolling when locked */
-    justify-content: flex-end; /* Force content to bottom when locked */
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding-bottom: 10px; /* Space for scrollbar */
+  flex-grow: 1; /* Allow messages-container to fill available space */
 }
 
 
@@ -495,8 +467,7 @@ body {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .auth-card, .chat-container {
-      margin: 0; /* Remove margin on smaller screens */
+  .auth-card {
       border-radius: 8px;
       box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   }
@@ -518,9 +489,13 @@ body {
   }
 
   .chat-container {
-      height: 100%; /* Ensure it takes full height */
-      border-radius: 0; /* Full width on mobile */
-      margin: 0; /* No margin on mobile */
+      position: fixed; /* Make it fill the visual viewport */
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 0; /* Ensure full screen on mobile */
+      margin: 0; /* Remove any auto margins */
   }
 
   .chat-header {
@@ -545,17 +520,9 @@ body {
       font-size: 0.75em;
   }
 
-  .toggle-scroll-lock-btn {
-      top: 15px; /* Adjust for mobile header */
-      left: 50%;
-      transform: translateX(-50%);
-      width: 35px;
-      height: 35px;
-      font-size: 1.2em;
-  }
-
   .chat-main {
-      padding: 15px;
+      padding: 15px; /* Keep existing padding */
+      padding-bottom: 80px; /* Add extra padding for keyboard space */
   }
 
   .message-form input, .send-button {
