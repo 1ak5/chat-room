@@ -510,9 +510,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Scroll to Bottom Button Logic ---
         const toggleScrollButton = () => {
             // Show button if not at bottom, hide if at bottom
-            // messagesContainer.scrollHeight: total scrollable height of content
-            // messagesContainer.scrollTop: current scroll position from top
-            // messagesContainer.clientHeight: visible height of the container
             const isAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20; // Consistent tolerance
             if (isAtBottom || isScrollLocked) { // Hide if at bottom OR if scroll is locked
                 scrollToBottomBtn.classList.remove('visible');
@@ -526,19 +523,20 @@ document.addEventListener('DOMContentLoaded', () => {
             isScrollLocked = !isScrollLocked;
             if (isScrollLocked) {
                 messagesContainer.classList.add('scroll-locked');
-                toggleScrollLockBtn.textContent = ''; // Locked icon
+                toggleScrollLockBtn.textContent = '🔒'; // Locked icon
                 scrollToBottom(); // Force scroll to bottom when locking
                 toggleScrollButton(); // Update scroll button visibility
                 messagesContainer.removeEventListener('scroll', toggleScrollButton); // Remove listener when locked
             } else {
                 messagesContainer.classList.remove('scroll-locked');
-                toggleScrollLockBtn.textContent = ''; // Unlocked icon
+                toggleScrollLockBtn.textContent = '🔓'; // Unlocked icon
                 messagesContainer.addEventListener('scroll', toggleScrollButton); // Add listener back when unlocked
                 toggleScrollButton(); // Update scroll button visibility
             }
         };
 
-        messagesContainer.addEventListener('scroll', toggleScrollButton); // Initial listener (will be removed if locked)
+        messagesContainer.addEventListener('scroll', toggleScrollButton);
+        scrollToBottomBtn.addEventListener('click', scrollToBottom);
         toggleScrollLockBtn.addEventListener('click', toggleScrollLock);
 
         // Initial setup for chat page: Fetch user/chat room, then messages, then start polling
