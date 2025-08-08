@@ -231,23 +231,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Chat Page Logic (chat.html) ---
     if (window.location.pathname === '/chat' || window.location.pathname === '/chat.html') {
         const chatRoomNameHeader = document.getElementById('chat-room-name');
+        const onlineUsersList = document.getElementById('online-users-list');
         const logoutButton = document.getElementById('logout-button');
         const leaveChatButton = document.getElementById('leave-chat-button');
         const messagesContainer = document.getElementById('messages-container');
         const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
+        const scrollToBottomBtn = document.getElementById('scroll-to-bottom-btn');
+        const toggleScrollLockBtn = document.getElementById('toggle-scroll-lock-btn'); // New button reference
 
         let currentUserId = null;
         let currentUsername = '';
         let currentChatRoomId = null;
-        let messagesCache = []; // To store messages and prevent re-rendering identical lists
+        let messagesCache = [];
+        let isScrollLocked = true; // Default to locked mode
 
         // Helper function to create a single message bubble element
         const createMessageBubbleElement = (msg) => {
             const messageBubble = document.createElement('div');
             messageBubble.classList.add('message-bubble');
             messageBubble.classList.add(msg.userId === currentUserId ? 'sent' : 'received');
+            messageBubble.dataset.messageId = msg._id; // For liking feature
 
             const usernameSpan = document.createElement('div');
             usernameSpan.classList.add('message-username');
@@ -262,24 +267,62 @@ document.addEventListener('DOMContentLoaded', () => {
             const date = new Date(msg.timestamp);
             timestampSpan.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+            const likeHeart = document.createElement('span');
+            likeHeart.classList.add('like-heart');
+            likeHeart.textContent = '❤️'; // Heart emoji
+
             messageBubble.appendChild(usernameSpan);
             messageBubble.appendChild(contentP);
             messageBubble.appendChild(timestampSpan);
+            messageBubble.appendChild(likeHeart); // Add heart to bubble
+
+            // Double-tap to like logic
+            let lastTap = 0;
+            messageBubble.addEventListener('touchend', function(event) {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 300 && tapLength > 0) { // Double tap detected (within 300ms)
+                    messageBubble.classList.toggle('liked');
+                    // Here you would send a request to the server to persist the like
+                    // For now, it's client-side only.
+                }
+                lastTap = currentTime;
+            });
+            // For desktop double click
+            messageBubble.addEventListener('dblclick', function() {
+                messageBubble.classList.toggle('liked');
+            });
+
             return messageBubble;
+        };
+
+        // Function to scroll to the bottom of the messages container
+        const scrollToBottom = () => {
+            requestAnimationFrame(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
         };
 
         // Function to render all messages
         const renderMessages = (messages) => {
             // Check if messages have actually changed to avoid unnecessary re-renders
-            // This is a simple check, for complex apps, a more robust diffing might be needed
             if (JSON.stringify(messagesCache) === JSON.stringify(messages)) {
+                // If messages haven't changed, just update scroll button visibility and return
+                toggleScrollButton();
                 return;
             }
+
+            // Capture scroll state BEFORE updating content
+            // Check if the user is at the very bottom or very close to it (within 20px)
+            const isCurrentlyAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20;
+
             messagesCache = messages; // Update cache
 
             messagesContainer.innerHTML = ''; // Clear existing messages
             if (messages.length === 0) {
                 messagesContainer.innerHTML = '<div class="text-center text-gray-500 py-10">No messages yet. Start the conversation!</div>';
+                scrollToBottom(); // Always scroll to bottom for empty state
+                toggleScrollButton(); // Update button visibility
                 return;
             }
 
@@ -288,11 +331,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 messagesContainer.appendChild(messageElement);
             });
 
-            // Scroll to bottom ONLY ONCE after all messages are added
-            // Use setTimeout to ensure DOM has rendered before scrolling
-            setTimeout(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 0);
+            // Scroll to bottom if:
+            // 1. Scroll is locked (always force to bottom)
+            // 2. User was already at the bottom (for new incoming messages when unlocked)
+            // 3. It's the very first load of messages (messagesCache was empty before this render)
+            if (isScrollLocked || isCurrentlyAtBottom || messagesCache.length === 0) {
+                scrollToBottom();
+            }
+            // After rendering, update scroll button visibility
+            toggleScrollButton();
         };
 
         // Function to fetch messages from the server
@@ -313,6 +360,37 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('Error fetching messages:', error);
                 // Optionally display an error message to the user
+            }
+        };
+
+        // Function to render online users
+        const renderOnlineUsers = (users) => {
+            onlineUsersList.innerHTML = ''; // Clear existing list
+            if (users.length === 0) {
+                onlineUsersList.textContent = 'No one else is online.';
+                return;
+            }
+            users.forEach(user => {
+                const userItem = document.createElement('span');
+                userItem.classList.add('online-user-item');
+                userItem.innerHTML = `<span class="online-dot"></span>${user.username}`;
+                onlineUsersList.appendChild(userItem);
+            });
+        };
+
+        // Function to fetch online users from the server
+        const fetchOnlineUsers = async () => {
+            if (!currentChatRoomId) return;
+
+            try {
+                const response = await fetch(`/api/chatrooms/${currentChatRoomId}/online-users`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch online users');
+                }
+                const data = await response.json();
+                renderOnlineUsers(data.onlineUsers);
+            } catch (error) {
+                console.error('Error fetching online users:', error);
             }
         };
 
@@ -364,12 +442,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const optimisticMessageElement = createMessageBubbleElement(tempMessage);
             optimisticMessageElement.dataset.tempId = tempMessage._id; // Mark optimistic message
             messagesContainer.appendChild(optimisticMessageElement);
-            // Scroll to bottom after optimistic add
-            setTimeout(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 0);
+            scrollToBottom(); // ALWAYS scroll to bottom when user sends a message
 
             messageInput.value = ''; // Clear input field
+            messageInput.focus(); // Keep keyboard open by re-focusing
 
             try {
                 const response = await fetch(`/api/messages/${currentChatRoomId}`, {
@@ -422,28 +498,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Event listener for leave chat button
         leaveChatButton.addEventListener('click', async () => {
-            // To "leave" a chat, we simply clear the currentChatRoomId from the session
-            // and redirect to the chat rooms page.
-            // A more robust solution would involve a server-side endpoint to remove the user
-            // from the chat room's participants list. For simplicity, we'll just clear session.
             try {
-                // We can't directly clear currentChatRoomId from session without a dedicated endpoint.
-                // For now, we'll redirect to chat-rooms, which will effectively "leave" the room
-                // by not having a currentChatRoomId in the session for the next page load.
-                // If you want to truly remove from server-side session, you'd need a new API route.
                 window.location.href = '/chat-rooms';
-            } catch (error) {
+            }
+            catch (error) {
                 console.error('Leave chat error:', error);
                 alert('Failed to leave chat. Please try again.');
             }
         });
 
+        // --- Scroll to Bottom Button Logic ---
+        const toggleScrollButton = () => {
+            // Show button if not at bottom, hide if at bottom
+            // messagesContainer.scrollHeight: total scrollable height of content
+            // messagesContainer.scrollTop: current scroll position from top
+            // messagesContainer.clientHeight: visible height of the container
+            const isAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20; // Consistent tolerance
+            if (isAtBottom || isScrollLocked) { // Hide if at bottom OR if scroll is locked
+                scrollToBottomBtn.classList.remove('visible');
+            } else {
+                scrollToBottomBtn.classList.add('visible');
+            }
+        };
+
+        // --- Scroll Lock Toggle Logic ---
+        const toggleScrollLock = () => {
+            isScrollLocked = !isScrollLocked;
+            if (isScrollLocked) {
+                messagesContainer.classList.add('scroll-locked');
+                toggleScrollLockBtn.textContent = ''; // Locked icon
+                scrollToBottom(); // Force scroll to bottom when locking
+                toggleScrollButton(); // Update scroll button visibility
+                messagesContainer.removeEventListener('scroll', toggleScrollButton); // Remove listener when locked
+            } else {
+                messagesContainer.classList.remove('scroll-locked');
+                toggleScrollLockBtn.textContent = ''; // Unlocked icon
+                messagesContainer.addEventListener('scroll', toggleScrollButton); // Add listener back when unlocked
+                toggleScrollButton(); // Update scroll button visibility
+            }
+        };
+
+        messagesContainer.addEventListener('scroll', toggleScrollButton); // Initial listener (will be removed if locked)
+        toggleScrollLockBtn.addEventListener('click', toggleScrollLock);
 
         // Initial setup for chat page: Fetch user/chat room, then messages, then start polling
-        fetchCurrentUserAndChatRoom().then(() => {
+        fetchCurrentUserAndChatRoom().then(async () => {
             if (currentChatRoomId) {
-                fetchMessages();
-                setInterval(fetchMessages, 2000); // Poll every 2 seconds for new messages
+                // Set initial scroll lock state and UI
+                toggleScrollLock(); // This will set isScrollLocked to true, apply class, and scroll to bottom
+
+                await fetchMessages(); // Wait for initial messages to load and render
+                // Initial scroll and button visibility are now handled by renderMessages and toggleScrollLock
+
+                setInterval(fetchMessages, 2000);
+                setInterval(fetchOnlineUsers, 5000);
             }
         });
     }
