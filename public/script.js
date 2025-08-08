@@ -1,9 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Common Elements & Helpers ---
-    const errorMessage = document.getElementById('error-message'); // For index.html
-    const createErrorMessage = document.getElementById('create-error-message'); // For chat-rooms.html
-    const joinErrorMessage = document.getElementById('join-error-message'); // For chat-rooms.html
-
+    // Common helper functions
     const displayMessage = (element, message, isError = true) => {
         if (element) {
             element.textContent = message;
@@ -19,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- Auth Page Logic (index.html) ---
+    // Auth Page Logic (index.html)
     if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
         const authForm = document.getElementById('auth-form');
         const authTitle = document.getElementById('auth-title');
@@ -27,8 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const authButton = document.getElementById('auth-button');
         const switchText = document.getElementById('switch-text');
         const switchButton = document.getElementById('switch-button');
+        const errorMessage = document.getElementById('error-message');
 
-        let isLoginMode = true; // Default to login
+        let isLoginMode = true;
 
         const updateAuthMode = () => {
             if (isLoginMode) {
@@ -67,16 +64,14 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, pin }),
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    displayMessage(errorMessage, data.message, false); // Success message
+                    displayMessage(errorMessage, data.message, false);
                     setTimeout(() => {
                         window.location.href = data.redirect;
                     }, 1000);
@@ -84,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     displayMessage(errorMessage, data.message || 'An unexpected error occurred.');
                 }
             } catch (error) {
-                console.error('Fetch error:', error);
                 displayMessage(errorMessage, 'Network error. Please try again.');
             } finally {
                 authButton.disabled = false;
@@ -92,10 +86,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        updateAuthMode(); // Initialize UI based on default mode
+        updateAuthMode();
     }
 
-    // --- Chat Rooms Page Logic (chat-rooms.html) ---
+    // Chat Rooms Page Logic (chat-rooms.html)
     if (window.location.pathname === '/chat-rooms' || window.location.pathname === '/chat-rooms.html') {
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -104,14 +98,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const createChatButton = document.getElementById('create-chat-button');
         const joinChatButton = document.getElementById('join-chat-button');
         const logoutButton = document.getElementById('logout-button');
-        const currentUsernameDisplay = document.getElementById('current-username-display'); // New element
+        const currentUsernameDisplay = document.getElementById('current-username-display');
+        const createErrorMessage = document.getElementById('create-error-message');
+        const joinErrorMessage = document.getElementById('join-error-message');
 
-        // Function to fetch and display current username
         const fetchAndDisplayUsername = async () => {
             try {
                 const response = await fetch('/api/user/me');
                 if (response.status === 401) {
-                    window.location.href = '/'; // Redirect to login if unauthorized
+                    window.location.href = '/';
                     return;
                 }
                 if (!response.ok) {
@@ -122,16 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentUsernameDisplay.textContent = `Logged in as: ${data.username}`;
                 }
             } catch (error) {
-                console.error('Error fetching username:', error);
                 if (currentUsernameDisplay) {
                     currentUsernameDisplay.textContent = 'Error loading username.';
                 }
             }
         };
 
-        // Call this function on page load for chat-rooms.html
         fetchAndDisplayUsername();
-
 
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
@@ -170,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     displayMessage(createErrorMessage, data.message || 'Failed to create chat room.');
                 }
             } catch (error) {
-                console.error('Create chat error:', error);
                 displayMessage(createErrorMessage, 'Network error. Please try again.');
             } finally {
                 createChatButton.disabled = false;
@@ -203,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     displayMessage(joinErrorMessage, data.message || 'Failed to join chat room.');
                 }
             } catch (error) {
-                console.error('Join chat error:', error);
                 displayMessage(joinErrorMessage, 'Network error. Please try again.');
             } finally {
                 joinChatButton.disabled = false;
@@ -218,20 +208,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     window.location.href = data.redirect;
                 } else {
-                    console.error('Logout failed:', data.message);
                     alert('Failed to logout. Please try again.');
                 }
             } catch (error) {
-                console.error('Logout fetch error:', error);
                 alert('Network error during logout. Please try again.');
             }
         });
     }
 
-    // --- Chat Page Logic (chat.html) ---
+    // Chat Page Logic (chat.html)
     if (window.location.pathname === '/chat' || window.location.pathname === '/chat.html') {
-        console.log('Chat page script loaded.'); // Debugging log
-
         const chatRoomNameHeader = document.getElementById('chat-room-name');
         const onlineUsersList = document.getElementById('online-users-list');
         const logoutButton = document.getElementById('logout-button');
@@ -241,20 +227,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const scrollToBottomBtn = document.getElementById('scroll-to-bottom-btn');
-        const toggleScrollLockBtn = document.getElementById('toggle-scroll-lock-btn'); // New button reference
 
         let currentUserId = null;
         let currentUsername = '';
         let currentChatRoomId = null;
         let messagesCache = [];
-        let isScrollLocked = true; // Default to locked mode
 
-        // Helper function to create a single message bubble element
         const createMessageBubbleElement = (msg) => {
             const messageBubble = document.createElement('div');
             messageBubble.classList.add('message-bubble');
             messageBubble.classList.add(msg.userId === currentUserId ? 'sent' : 'received');
-            messageBubble.dataset.messageId = msg._id; // For liking feature
+            messageBubble.dataset.messageId = msg._id;
 
             const usernameSpan = document.createElement('div');
             usernameSpan.classList.add('message-username');
@@ -271,26 +254,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const likeHeart = document.createElement('span');
             likeHeart.classList.add('like-heart');
-            likeHeart.textContent = '❤️'; // Heart emoji
+            likeHeart.textContent = '❤️';
 
             messageBubble.appendChild(usernameSpan);
             messageBubble.appendChild(contentP);
             messageBubble.appendChild(timestampSpan);
-            messageBubble.appendChild(likeHeart); // Add heart to bubble
+            messageBubble.appendChild(likeHeart);
 
-            // Double-tap to like logic
+            // Double-tap to like
             let lastTap = 0;
             messageBubble.addEventListener('touchend', function(event) {
                 const currentTime = new Date().getTime();
                 const tapLength = currentTime - lastTap;
-                if (tapLength < 300 && tapLength > 0) { // Double tap detected (within 300ms)
+                if (tapLength < 300 && tapLength > 0) {
                     messageBubble.classList.toggle('liked');
-                    // Here you would send a request to the server to persist the like
-                    // For now, it's client-side only.
                 }
                 lastTap = currentTime;
             });
-            // For desktop double click
+
             messageBubble.addEventListener('dblclick', function() {
                 messageBubble.classList.toggle('liked');
             });
@@ -298,37 +279,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return messageBubble;
         };
 
-        // Function to scroll to the bottom of the messages container
         const scrollToBottom = () => {
-            requestAnimationFrame(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            });
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         };
 
-        // Function to render all messages
         const renderMessages = (messages) => {
-            console.log('renderMessages called with', messages.length, 'messages.'); // Debugging log
-            // Check if messages have actually changed to avoid unnecessary re-renders
             if (JSON.stringify(messagesCache) === JSON.stringify(messages)) {
-                console.log('Messages cache matched. Skipping re-render.'); // Debugging log
-                // If messages haven't changed, just update scroll button visibility and return
                 toggleScrollButton();
                 return;
             }
 
-            // Capture scroll state BEFORE updating content
-            // Check if the user is at the very bottom or very close to it (within 20px)
-            const isCurrentlyAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20;
-            console.log('isCurrentlyAtBottom:', isCurrentlyAtBottom); // Debugging log
+            const isAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20;
+            messagesCache = messages;
 
-            messagesCache = messages; // Update cache
-
-            messagesContainer.innerHTML = ''; // Clear existing messages
+            messagesContainer.innerHTML = '';
             if (messages.length === 0) {
-                messagesContainer.innerHTML = '<div class="text-center text-gray-500 py-10">No messages yet. Start the conversation!</div>';
-                scrollToBottom(); // Always scroll to bottom for empty state
-                toggleScrollButton(); // Update button visibility
-                console.log('No messages. Rendered empty state.'); // Debugging log
+                messagesContainer.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No messages yet. Start the conversation!</div>';
+                toggleScrollButton();
                 return;
             }
 
@@ -337,51 +304,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 messagesContainer.appendChild(messageElement);
             });
 
-            // Scroll to bottom if:
-            // 1. User was already at the bottom (for new incoming messages)
-            // 2. It's the very first load of messages (messagesCache was empty before this render)
-            if (isCurrentlyAtBottom || messagesCache.length === messages.length) { // messagesCache.length === messages.length means it's the first render or full refresh
+            if (isAtBottom || messagesCache.length === messages.length) {
                 scrollToBottom();
-                console.log('Scrolled to bottom due to isCurrentlyAtBottom or initial load.'); // Debugging log
             }
-            // After rendering, update scroll button visibility
             toggleScrollButton();
         };
 
-        // Function to fetch messages from the server
         const fetchMessages = async () => {
-            if (!currentChatRoomId) {
-                console.log('fetchMessages called but currentChatRoomId is null. Skipping.'); // Debugging log
-                return; // Don't fetch if no room is selected
-            }
-            console.log(`Attempting to fetch messages for chat room ID: ${currentChatRoomId}...`); // Debugging log
+            if (!currentChatRoomId) return;
 
             try {
                 const response = await fetch(`/api/messages/${currentChatRoomId}`);
-                console.log('Response from /api/messages:', response.status, response.statusText); // Debugging log
-
                 if (response.status === 401 || response.status === 403) {
-                    console.log('Unauthorized/Forbidden: Redirecting to chat rooms selection.'); // Debugging log
-                    window.location.href = '/chat-rooms'; // Redirect if unauthorized or access denied
+                    window.location.href = '/chat-rooms';
                     return;
                 }
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Failed to fetch messages:', response.status, errorText); // Debugging log
                     throw new Error('Failed to fetch messages');
                 }
                 const data = await response.json();
-                console.log('Messages data received:', data.messages.length, 'messages.'); // Debugging log
                 renderMessages(data.messages);
             } catch (error) {
-                console.error('Error in fetchMessages:', error); // Debugging log
-                // Optionally display an error message to the user
+                console.error('Error fetching messages:', error);
             }
         };
 
-        // Function to render online users
         const renderOnlineUsers = (users) => {
-            onlineUsersList.innerHTML = ''; // Clear existing list
+            onlineUsersList.innerHTML = '';
             if (users.length === 0) {
                 onlineUsersList.textContent = 'No one else is online.';
                 return;
@@ -394,7 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        // Function to fetch online users from the server
         const fetchOnlineUsers = async () => {
             if (!currentChatRoomId) return;
 
@@ -410,45 +358,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // Function to fetch current user and chat room details
         const fetchCurrentUserAndChatRoom = async () => {
-            console.log('Attempting to fetch current user and chat room details...'); // Debugging log
             try {
                 const response = await fetch('/api/user/me');
-                console.log('Response from /api/user/me:', response.status, response.statusText); // Debugging log
-
                 if (response.status === 401) {
-                    console.log('Unauthorized: Redirecting to login.'); // Debugging log
-                    window.location.href = '/'; // Redirect to login if unauthorized
+                    window.location.href = '/';
                     return;
                 }
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Failed to fetch current user/chat room:', response.status, errorText); // Debugging log
                     throw new Error('Failed to fetch current user/chat room');
                 }
                 const data = await response.json();
-                console.log('User/Chat Room data received:', data); // Debugging log
-
                 currentUserId = data.userId;
                 currentUsername = data.username;
                 currentChatRoomId = data.currentChatRoomId;
 
                 if (!currentChatRoomId) {
-                    console.log('No current chat room ID found. Redirecting to chat rooms selection.'); // Debugging log
-                    window.location.href = '/chat-rooms'; // Redirect if no chat room selected
+                    window.location.href = '/chat-rooms';
                     return;
                 }
                 chatRoomNameHeader.textContent = data.currentChatRoomName || 'Chat Room';
-                console.log(`Current User: ${currentUsername}, Chat Room: ${chatRoomNameHeader.textContent}, ID: ${currentChatRoomId}`); // Debugging log
-
             } catch (error) {
-                console.error('Error in fetchCurrentUserAndChatRoom:', error); // Debugging log
-                chatRoomNameHeader.textContent = 'Error Loading Chat'; // Fallback message
+                console.error('Error fetching current user/chat room:', error);
+                chatRoomNameHeader.textContent = 'Error Loading Chat';
             }
         };
 
-        // Event listener for sending messages
         messageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const content = messageInput.value.trim();
@@ -457,55 +392,47 @@ document.addEventListener('DOMContentLoaded', () => {
             sendButton.disabled = true;
             sendButton.textContent = 'Sending...';
 
-            // --- Optimistic Update ---
             const tempMessage = {
-                _id: `temp-${Date.now()}`, // Unique temporary ID for optimistic message
+                _id: `temp-${Date.now()}`,
                 userId: currentUserId,
                 username: currentUsername,
                 content: content,
                 timestamp: new Date().toISOString(),
             };
             const optimisticMessageElement = createMessageBubbleElement(tempMessage);
-            optimisticMessageElement.dataset.tempId = tempMessage._id; // Mark optimistic message
+            optimisticMessageElement.dataset.tempId = tempMessage._id;
             messagesContainer.appendChild(optimisticMessageElement);
-            scrollToBottom(); // ALWAYS scroll to bottom when user sends a message
+            scrollToBottom();
 
-            messageInput.value = ''; // Clear input field
-            messageInput.focus(); // Keep keyboard open by re-focusing
+            messageInput.value = '';
+            messageInput.focus();
 
             try {
                 const response = await fetch(`/api/messages/${currentChatRoomId}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ content }),
                 });
 
                 if (response.status === 401 || response.status === 403) {
-                    window.location.href = '/chat-rooms'; // Redirect if unauthorized or access denied
+                    window.location.href = '/chat-rooms';
                     return;
                 }
                 if (!response.ok) {
                     throw new Error('Failed to send message');
                 }
-                // Message sent successfully. The next poll will fetch the real message
-                // and renderMessages will update the UI, replacing the temporary one.
             } catch (error) {
                 console.error('Error sending message:', error);
-                // If sending fails, remove the optimistic message from UI
                 const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempMessage._id}"]`);
                 if (tempBubble) {
                     tempBubble.remove();
                 }
-                // Optionally, display an error message to the user
             } finally {
                 sendButton.disabled = false;
                 sendButton.textContent = 'Send';
             }
         });
 
-        // Event listener for logout button
         logoutButton.addEventListener('click', async () => {
             try {
                 const response = await fetch('/api/auth/logout', { method: 'POST' });
@@ -513,76 +440,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     window.location.href = data.redirect;
                 } else {
-                    console.error('Logout failed:', data.message);
                     alert('Failed to logout. Please try again.');
                 }
             } catch (error) {
-                console.error('Logout fetch error:', error);
                 alert('Network error during logout. Please try again.');
             }
         });
 
-        // Event listener for leave chat button
-        leaveChatButton.addEventListener('click', async () => {
-            try {
-                window.location.href = '/chat-rooms';
-            }
-            catch (error) {
-                console.error('Leave chat error:', error);
-                alert('Failed to leave chat. Please try again.');
-            }
+        leaveChatButton.addEventListener('click', () => {
+            window.location.href = '/chat-rooms';
         });
 
-        // --- Scroll to Bottom Button Logic ---
         const toggleScrollButton = () => {
-            // Show button if not at bottom, hide if at bottom
-            const isAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20; // Consistent tolerance
-            if (isAtBottom || isScrollLocked) { // Hide if at bottom OR if scroll is locked
+            const isAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20;
+            if (isAtBottom) {
                 scrollToBottomBtn.classList.remove('visible');
             } else {
                 scrollToBottomBtn.classList.add('visible');
             }
         };
 
-        // --- Scroll Lock Toggle Logic ---
-        const toggleScrollLock = () => {
-            isScrollLocked = !isScrollLocked;
-            if (isScrollLocked) {
-                messagesContainer.classList.add('scroll-locked');
-                toggleScrollLockBtn.textContent = '🔒'; // Locked icon
-                scrollToBottom(); // Force scroll to bottom when locking
-                toggleScrollButton(); // Update scroll button visibility
-                messagesContainer.removeEventListener('scroll', toggleScrollButton); // Remove listener when locked
-            } else {
-                messagesContainer.classList.remove('scroll-locked');
-                toggleScrollLockBtn.textContent = '🔓'; // Unlocked icon
-                messagesContainer.addEventListener('scroll', toggleScrollButton); // Add listener back when unlocked
-                toggleScrollButton(); // Update scroll button visibility
-            }
-        };
-
         messagesContainer.addEventListener('scroll', toggleScrollButton);
         scrollToBottomBtn.addEventListener('click', scrollToBottom);
-        toggleScrollLockBtn.addEventListener('click', toggleScrollLock);
 
-        // Initial setup for chat page: Fetch user/chat room, then messages, then start polling
-        console.log('Starting initial setup for chat page...'); // Debugging log
-        fetchCurrentUserAndChatRoom().then(async () => {
-            console.log('fetchCurrentUserAndChatRoom completed.'); // Debugging log
+        // Initialize chat
+        fetchCurrentUserAndChatRoom().then(() => {
             if (currentChatRoomId) {
-                console.log('currentChatRoomId is set. Proceeding to fetch messages.'); // Debugging log
-                await fetchMessages(); // Wait for initial messages to load and render
-                scrollToBottom(); // Ensure initial scroll to bottom after messages are rendered
-                toggleScrollButton(); // Set initial button visibility
-
-                console.log('Starting message and online user polling intervals.'); // Debugging log
+                fetchMessages();
                 setInterval(fetchMessages, 2000);
                 setInterval(fetchOnlineUsers, 5000);
-            } else {
-                console.log('currentChatRoomId is NOT set after fetchCurrentUserAndChatRoom. This should have redirected to /chat-rooms.'); // Debugging log
             }
-        }).catch(error => {
-            console.error('Error during initial chat page setup:', error); // Debugging log
         });
     }
 });
