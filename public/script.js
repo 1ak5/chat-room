@@ -15,204 +15,257 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Auth Page Logic (index.html)
-    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
-        const authForm = document.getElementById('auth-form');
-        const authTitle = document.getElementById('auth-title');
-        const authDescription = document.getElementById('auth-description');
-        const authButton = document.getElementById('auth-button');
-        const switchText = document.getElementById('switch-text');
-        const switchButton = document.getElementById('switch-button');
-        const errorMessage = document.getElementById('error-message');
-
-        let isLoginMode = true;
-
-        const updateAuthMode = () => {
-            if (isLoginMode) {
-                authTitle.textContent = 'Login';
-                authDescription.textContent = 'Enter your credentials to access your chat.';
-                authButton.textContent = 'Login';
-                switchText.textContent = "Don't have an account?";
-                switchButton.textContent = 'Register';
-            } else {
-                authTitle.textContent = 'Register';
-                authDescription.textContent = 'Create a new account to start chatting.';
-                authButton.textContent = 'Register';
-                switchText.textContent = 'Already have an account?';
-                switchButton.textContent = 'Login';
-            }
-            clearMessage(errorMessage);
-        };
-
-        switchButton.addEventListener('click', () => {
-            isLoginMode = !isLoginMode;
-            updateAuthMode();
-        });
-
-        authForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            clearMessage(errorMessage);
-
-            const username = authForm.username.value;
-            const pin = authForm.pin.value;
-
-            authButton.disabled = true;
-            authButton.textContent = isLoginMode ? 'Logging in...' : 'Registering...';
-
-            const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
-
+    // Check if user is already logged in and redirect accordingly
+    const checkAuthAndRedirect = async () => {
+        // Only check on root/index page
+        if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
             try {
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, pin }),
-                });
-
-                const data = await response.json();
-
+                const response = await fetch('/api/user/me');
                 if (response.ok) {
-                    displayMessage(errorMessage, data.message, false);
-                    setTimeout(() => {
-                        window.location.href = data.redirect;
-                    }, 1000);
-                } else {
-                    displayMessage(errorMessage, data.message || 'An unexpected error occurred.');
+                    const data = await response.json();
+                    // If user has active chat room, go directly to chat
+                    if (data.currentChatRoomId) {
+                        window.location.href = '/chat';
+                        return true; // Indicate redirect happened
+                    } else {
+                        // User logged in but no chat room, go to chat rooms
+                        window.location.href = '/chat-rooms';
+                        return true; // Indicate redirect happened
+                    }
                 }
             } catch (error) {
-                displayMessage(errorMessage, 'Network error. Please try again.');
-            } finally {
-                authButton.disabled = false;
-                authButton.textContent = isLoginMode ? 'Login' : 'Register';
+                // User not logged in, stay on login page
+                console.log('User not logged in, showing login page');
             }
-        });
+        }
+        return false; // No redirect happened
+    };
 
-        updateAuthMode();
+    // Auth Page Logic (index.html)
+    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+        // First check if user is already logged in
+        checkAuthAndRedirect().then(redirected => {
+            if (redirected) return; // If redirected, don't initialize login form
+
+            const authForm = document.getElementById('auth-form');
+            const authTitle = document.getElementById('auth-title');
+            const authDescription = document.getElementById('auth-description');
+            const authButton = document.getElementById('auth-button');
+            const switchText = document.getElementById('switch-text');
+            const switchButton = document.getElementById('switch-button');
+            const errorMessage = document.getElementById('error-message');
+
+            let isLoginMode = true;
+
+            const updateAuthMode = () => {
+                if (isLoginMode) {
+                    authTitle.textContent = 'Login';
+                    authDescription.textContent = 'Enter your credentials to access your chat.';
+                    authButton.textContent = 'Login';
+                    switchText.textContent = "Don't have an account?";
+                    switchButton.textContent = 'Register';
+                } else {
+                    authTitle.textContent = 'Register';
+                    authDescription.textContent = 'Create a new account to start chatting.';
+                    authButton.textContent = 'Register';
+                    switchText.textContent = 'Already have an account?';
+                    switchButton.textContent = 'Login';
+                }
+                clearMessage(errorMessage);
+            };
+
+            switchButton.addEventListener('click', () => {
+                isLoginMode = !isLoginMode;
+                updateAuthMode();
+            });
+
+            authForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                clearMessage(errorMessage);
+
+                const username = authForm.username.value;
+                const pin = authForm.pin.value;
+
+                authButton.disabled = true;
+                authButton.textContent = isLoginMode ? 'Logging in...' : 'Registering...';
+
+                const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
+
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, pin }),
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        displayMessage(errorMessage, data.message, false);
+                        setTimeout(() => {
+                            window.location.href = data.redirect;
+                        }, 1000);
+                    } else {
+                        displayMessage(errorMessage, data.message || 'An unexpected error occurred.');
+                    }
+                } catch (error) {
+                    displayMessage(errorMessage, 'Network error. Please try again.');
+                } finally {
+                    authButton.disabled = false;
+                    authButton.textContent = isLoginMode ? 'Login' : 'Register';
+                }
+            });
+
+            updateAuthMode();
+        });
     }
 
     // Chat Rooms Page Logic (chat-rooms.html)
     if (window.location.pathname === '/chat-rooms' || window.location.pathname === '/chat-rooms.html') {
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
-        const createChatForm = document.getElementById('create-chat-form');
-        const joinChatForm = document.getElementById('join-chat-form');
-        const createChatButton = document.getElementById('create-chat-button');
-        const joinChatButton = document.getElementById('join-chat-button');
-        const logoutButton = document.getElementById('logout-button');
-        const currentUsernameDisplay = document.getElementById('current-username-display');
-        const createErrorMessage = document.getElementById('create-error-message');
-        const joinErrorMessage = document.getElementById('join-error-message');
-
-        const fetchAndDisplayUsername = async () => {
+        // Check if user already has an active chat room and redirect to chat
+        const checkExistingChatRoom = async () => {
             try {
                 const response = await fetch('/api/user/me');
-                if (response.status === 401) {
-                    window.location.href = '/';
-                    return;
-                }
-                if (!response.ok) {
-                    throw new Error('Failed to fetch current user');
-                }
-                const data = await response.json();
-                if (currentUsernameDisplay) {
-                    currentUsernameDisplay.textContent = `Logged in as: ${data.username}`;
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.currentChatRoomId) {
+                        // User already has active chat room, redirect to chat
+                        window.location.href = '/chat';
+                        return true;
+                    }
                 }
             } catch (error) {
-                if (currentUsernameDisplay) {
-                    currentUsernameDisplay.textContent = 'Error loading username.';
-                }
+                console.log('Error checking existing chat room');
             }
+            return false;
         };
 
-        fetchAndDisplayUsername();
+        checkExistingChatRoom().then(redirected => {
+            if (redirected) return; // If redirected, don't initialize chat rooms page
 
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                tabContents.forEach(content => content.classList.remove('active'));
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const createChatForm = document.getElementById('create-chat-form');
+            const joinChatForm = document.getElementById('join-chat-form');
+            const createChatButton = document.getElementById('create-chat-button');
+            const joinChatButton = document.getElementById('join-chat-button');
+            const logoutButton = document.getElementById('logout-button');
+            const currentUsernameDisplay = document.getElementById('current-username-display');
+            const createErrorMessage = document.getElementById('create-error-message');
+            const joinErrorMessage = document.getElementById('join-error-message');
 
-                button.classList.add('active');
-                document.getElementById(`${button.dataset.tab}-chat-form`).classList.add('active');
-                clearMessage(createErrorMessage);
-                clearMessage(joinErrorMessage);
+            const fetchAndDisplayUsername = async () => {
+                try {
+                    const response = await fetch('/api/user/me');
+                    if (response.status === 401) {
+                        window.location.href = '/';
+                        return;
+                    }
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch current user');
+                    }
+                    const data = await response.json();
+                    if (currentUsernameDisplay) {
+                        currentUsernameDisplay.textContent = `Logged in as: ${data.username}`;
+                    }
+                } catch (error) {
+                    if (currentUsernameDisplay) {
+                        currentUsernameDisplay.textContent = 'Error loading username.';
+                    }
+                }
+            };
+
+            fetchAndDisplayUsername();
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+
+                    button.classList.add('active');
+                    document.getElementById(`${button.dataset.tab}-chat-form`).classList.add('active');
+                    clearMessage(createErrorMessage);
+                    clearMessage(joinErrorMessage);
+                });
             });
-        });
 
-        createChatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            clearMessage(createErrorMessage);
+            createChatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                clearMessage(createErrorMessage);
 
-            const name = createChatForm['create-chat-name'].value;
-            const pin = createChatForm['create-chat-pin'].value;
+                const name = createChatForm['create-chat-name'].value;
+                const pin = createChatForm['create-chat-pin'].value;
 
-            createChatButton.disabled = true;
-            createChatButton.textContent = 'Creating...';
+                createChatButton.disabled = true;
+                createChatButton.textContent = 'Creating...';
 
-            try {
-                const response = await fetch('/api/chatrooms/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, pin }),
-                });
-                const data = await response.json();
+                try {
+                    const response = await fetch('/api/chatrooms/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, pin }),
+                    });
+                    const data = await response.json();
 
-                if (response.ok) {
-                    displayMessage(createErrorMessage, data.message, false);
-                    setTimeout(() => { window.location.href = data.redirect; }, 1000);
-                } else {
-                    displayMessage(createErrorMessage, data.message || 'Failed to create chat room.');
+                    if (response.ok) {
+                        displayMessage(createErrorMessage, data.message, false);
+                        setTimeout(() => { window.location.href = data.redirect; }, 1000);
+                    } else {
+                        displayMessage(createErrorMessage, data.message || 'Failed to create chat room.');
+                    }
+                } catch (error) {
+                    displayMessage(createErrorMessage, 'Network error. Please try again.');
+                } finally {
+                    createChatButton.disabled = false;
+                    createChatButton.textContent = 'Create & Join Chat';
                 }
-            } catch (error) {
-                displayMessage(createErrorMessage, 'Network error. Please try again.');
-            } finally {
-                createChatButton.disabled = false;
-                createChatButton.textContent = 'Create & Join Chat';
-            }
-        });
+            });
 
-        joinChatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            clearMessage(joinErrorMessage);
+            joinChatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                clearMessage(joinErrorMessage);
 
-            const name = joinChatForm['join-chat-name'].value;
-            const pin = joinChatForm['join-chat-pin'].value;
+                const name = joinChatForm['join-chat-name'].value;
+                const pin = joinChatForm['join-chat-pin'].value;
 
-            joinChatButton.disabled = true;
-            joinChatButton.textContent = 'Joining...';
+                joinChatButton.disabled = true;
+                joinChatButton.textContent = 'Joining...';
 
-            try {
-                const response = await fetch('/api/chatrooms/join', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, pin }),
-                });
-                const data = await response.json();
+                try {
+                    const response = await fetch('/api/chatrooms/join', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, pin }),
+                    });
+                    const data = await response.json();
 
-                if (response.ok) {
-                    displayMessage(joinErrorMessage, data.message, false);
-                    setTimeout(() => { window.location.href = data.redirect; }, 1000);
-                } else {
-                    displayMessage(joinErrorMessage, data.message || 'Failed to join chat room.');
+                    if (response.ok) {
+                        displayMessage(joinErrorMessage, data.message, false);
+                        setTimeout(() => { window.location.href = data.redirect; }, 1000);
+                    } else {
+                        displayMessage(joinErrorMessage, data.message || 'Failed to join chat room.');
+                    }
+                } catch (error) {
+                    displayMessage(joinErrorMessage, 'Network error. Please try again.');
+                } finally {
+                    joinChatButton.disabled = false;
+                    joinChatButton.textContent = 'Join Chat';
                 }
-            } catch (error) {
-                displayMessage(joinErrorMessage, 'Network error. Please try again.');
-            } finally {
-                joinChatButton.disabled = false;
-                joinChatButton.textContent = 'Join Chat';
-            }
-        });
+            });
 
-        logoutButton.addEventListener('click', async () => {
-            try {
-                const response = await fetch('/api/auth/logout', { method: 'POST' });
-                const data = await response.json();
-                if (response.ok) {
-                    window.location.href = data.redirect;
-                } else {
-                    alert('Failed to logout. Please try again.');
+            logoutButton.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/api/auth/logout', { method: 'POST' });
+                    const data = await response.json();
+                    if (response.ok) {
+                        window.location.href = data.redirect;
+                    } else {
+                        alert('Failed to logout. Please try again.');
+                    }
+                } catch (error) {
+                    alert('Network error during logout. Please try again.');
                 }
-            } catch (error) {
-                alert('Network error during logout. Please try again.');
-            }
+            });
         });
     }
 
@@ -261,17 +314,18 @@ document.addEventListener('DOMContentLoaded', () => {
             messageBubble.appendChild(timestampSpan);
             messageBubble.appendChild(likeHeart);
 
-            // Double-tap to like
+            // Double-tap to like (FIXED: Changed from 300ms to 500ms for better double-tap detection)
             let lastTap = 0;
             messageBubble.addEventListener('touchend', function(event) {
                 const currentTime = new Date().getTime();
                 const tapLength = currentTime - lastTap;
-                if (tapLength < 300 && tapLength > 0) {
+                if (tapLength < 500 && tapLength > 0) { // Increased to 500ms for better double-tap detection
                     messageBubble.classList.toggle('liked');
                 }
                 lastTap = currentTime;
             });
 
+            // For desktop double click
             messageBubble.addEventListener('dblclick', function() {
                 messageBubble.classList.toggle('liked');
             });
@@ -322,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const data = await response.json();
                 renderMessages(data.messages);
-                return Promise.resolve(); // Return resolved promise
+                return Promise.resolve();
             } catch (error) {
                 console.error('Error fetching messages:', error);
                 return Promise.reject(error);
