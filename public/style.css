@@ -218,7 +218,8 @@ body {
 .chat-header {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center; /* Center align all content */
+  justify-content: center;
   padding: 18px 25px;
   background-color: var(--primary-color);
   color: var(--white);
@@ -226,20 +227,20 @@ body {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
   position: relative;
+  text-align: center; /* Center text alignment */
 }
 
 .chat-header h1 {
   font-size: 1.5em;
   font-weight: 600;
-  margin-bottom: 5px;
+  margin-bottom: 8px; /* Space between chat name and online users */
 }
 
 .header-buttons {
-  position: absolute;
-  top: 18px;
-  right: 25px;
   display: flex;
   gap: 10px;
+  margin-top: 10px; /* Space from online users list */
+  justify-content: center; /* Center the buttons */
 }
 
 .logout-button, .leave-chat-button {
@@ -265,7 +266,8 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  max-width: calc(100% - 120px);
+  justify-content: center; /* Center the online users */
+  margin-bottom: 5px; /* Space before buttons */
 }
 
 .online-user-item {
@@ -488,19 +490,11 @@ body {
 
   .chat-header {
       padding: 15px 20px;
-      flex-direction: column;
-      align-items: flex-start;
+      /* Keep center alignment on mobile too */
   }
 
   .chat-header h1 {
       font-size: 1.2em;
-  }
-
-  .header-buttons {
-      position: static;
-      margin-top: 10px;
-      width: 100%;
-      justify-content: flex-end;
   }
 
   .logout-button, .leave-chat-button {
