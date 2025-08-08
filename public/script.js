@@ -289,7 +289,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Scroll to bottom ONLY ONCE after all messages are added
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // Use setTimeout to ensure DOM has rendered before scrolling
+            setTimeout(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 0);
         };
 
         // Function to fetch messages from the server
@@ -361,7 +364,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const optimisticMessageElement = createMessageBubbleElement(tempMessage);
             optimisticMessageElement.dataset.tempId = tempMessage._id; // Mark optimistic message
             messagesContainer.appendChild(optimisticMessageElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom after optimistic add
+            // Scroll to bottom after optimistic add
+            setTimeout(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 0);
 
             messageInput.value = ''; // Clear input field
 
