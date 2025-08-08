@@ -41,6 +41,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  lastActive: { // New field for online status tracking
+    type: Date,
+    default: Date.now,
+  },
 }, { timestamps: true });
 const User = mongoose.model('User', UserSchema);
 
@@ -100,7 +104,7 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
     sameSite: 'lax',
   },
-  proxy: true // <--- YEH LINE ADD KI HAI
+  proxy: true
 }));
 
 // Serve static files from the 'public' directory
@@ -114,6 +118,19 @@ const isAuthenticated = (req, res, next) => {
     res.redirect('/'); // Redirect to login/register if not authenticated
   }
 };
+
+// Middleware to update lastActive timestamp for authenticated users
+const updateLastActive = async (req, res, next) => {
+  if (req.session.userId) {
+    try {
+      await User.findByIdAndUpdate(req.session.userId, { lastActive: new Date() });
+    } catch (error) {
+      console.error('Error updating lastActive:', error);
+    }
+  }
+  next();
+};
+app.use(updateLastActive); // Apply this middleware to all routes after session
 
 // --- Routes ---
 
@@ -344,6 +361,37 @@ app.post('/api/messages/:chatRoomId', isAuthenticated, async (req, res) => {
     res.status(500).json({ message: 'Failed to send message.' });
   }
 });
+
+// New route to get online users in a specific chat room
+app.get('/api/chatrooms/:chatRoomId/online-users', isAuthenticated, async (req, res) => {
+  const { chatRoomId } = req.params;
+  const userId = req.session.userId; // Current user
+
+  try {
+    const room = await ChatRoom.findById(chatRoomId);
+    if (!room || !room.participants.includes(userId)) {
+      return res.status(403).json({ message: 'Access denied to this chat room.' });
+    }
+
+    // Define a threshold for "online" (e.g., last 15 seconds)
+    const onlineThreshold = new Date(Date.now() - 15 * 1000); // 15 seconds ago
+
+    // Find users who are participants of this room and have been active recently
+    const onlineUsers = await User.find({
+      _id: { $in: room.participants },
+      lastActive: { $gte: onlineThreshold }
+    }).select('username').lean();
+
+    // Filter out the current user from the list
+    const filteredOnlineUsers = onlineUsers.filter(user => user._id.toString() !== userId.toString());
+
+    res.status(200).json({ onlineUsers: filteredOnlineUsers });
+  } catch (error) {
+    console.error('Error fetching online users:', error);
+    res.status(500).json({ message: 'Failed to fetch online users.' });
+  }
+});
+
 
 // Serve chat-rooms.html if authenticated
 app.get('/chat-rooms', isAuthenticated, (req, res) => {
