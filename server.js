@@ -99,7 +99,8 @@ app.use(session({
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
     sameSite: 'lax',
-  }
+  },
+  proxy: true // <--- YEH LINE ADD KI HAI
 }));
 
 // Serve static files from the 'public' directory
