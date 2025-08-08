@@ -314,15 +314,23 @@ document.addEventListener('DOMContentLoaded', () => {
             messageBubble.appendChild(timestampSpan);
             messageBubble.appendChild(likeHeart);
 
-            // Double-tap to like (FIXED: Changed from 300ms to 500ms for better double-tap detection)
-            let lastTap = 0;
+            // Double-tap to like (FIXED: Better double-tap detection)
+            let tapCount = 0;
+            let tapTimer = null;
+
             messageBubble.addEventListener('touchend', function(event) {
-                const currentTime = new Date().getTime();
-                const tapLength = currentTime - lastTap;
-                if (tapLength < 500 && tapLength > 0) { // Increased to 500ms for better double-tap detection
+                event.preventDefault(); // Prevent default touch behavior
+                tapCount++;
+                
+                if (tapCount === 1) {
+                    tapTimer = setTimeout(() => {
+                        tapCount = 0; // Reset if single tap
+                    }, 300);
+                } else if (tapCount === 2) {
+                    clearTimeout(tapTimer);
+                    tapCount = 0;
                     messageBubble.classList.toggle('liked');
                 }
-                lastTap = currentTime;
             });
 
             // For desktop double click
@@ -338,6 +346,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const renderMessages = (messages) => {
+            const wasAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 50;
+            const previousMessageCount = messagesCache.length;
+            
             if (JSON.stringify(messagesCache) === JSON.stringify(messages)) {
                 toggleScrollButton();
                 return;
@@ -357,8 +368,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 messagesContainer.appendChild(messageElement);
             });
 
-            // ALWAYS scroll to bottom for any message update (send/receive/reload)
-            scrollToBottom();
+            // Auto-scroll logic: scroll to bottom if user was at bottom OR if new messages arrived OR on initial load
+            if (wasAtBottom || messages.length > previousMessageCount || previousMessageCount === 0) {
+                setTimeout(() => {
+                    scrollToBottom();
+                }, 50);
+            }
+            
             toggleScrollButton();
         };
 
@@ -432,6 +448,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 chatRoomNameHeader.textContent = data.currentChatRoomName || 'Chat Room';
+
+                // Force scroll to bottom on initial page load
+                setTimeout(() => {
+                    scrollToBottom();
+                }, 200);
             } catch (error) {
                 console.error('Error fetching current user/chat room:', error);
                 chatRoomNameHeader.textContent = 'Error Loading Chat';
