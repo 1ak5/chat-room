@@ -289,7 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const isAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20;
             messagesCache = messages;
 
             messagesContainer.innerHTML = '';
@@ -304,9 +303,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 messagesContainer.appendChild(messageElement);
             });
 
-            if (isAtBottom || messagesCache.length === messages.length) {
-                scrollToBottom();
-            }
+            // ALWAYS scroll to bottom for any message update (send/receive/reload)
+            scrollToBottom();
             toggleScrollButton();
         };
 
@@ -324,8 +322,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const data = await response.json();
                 renderMessages(data.messages);
+                return Promise.resolve(); // Return resolved promise
             } catch (error) {
                 console.error('Error fetching messages:', error);
+                return Promise.reject(error);
             }
         };
 
@@ -466,7 +466,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize chat
         fetchCurrentUserAndChatRoom().then(() => {
             if (currentChatRoomId) {
-                fetchMessages();
+                fetchMessages().then(() => {
+                    // Ensure scroll to bottom after initial load
+                    setTimeout(() => {
+                        scrollToBottom();
+                    }, 100);
+                });
                 setInterval(fetchMessages, 2000);
                 setInterval(fetchOnlineUsers, 5000);
             }
