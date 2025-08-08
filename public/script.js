@@ -230,6 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Chat Page Logic (chat.html) ---
     if (window.location.pathname === '/chat' || window.location.pathname === '/chat.html') {
+        console.log('Chat page script loaded.'); // Debugging log
+
         const chatRoomNameHeader = document.getElementById('chat-room-name');
         const onlineUsersList = document.getElementById('online-users-list');
         const logoutButton = document.getElementById('logout-button');
@@ -305,8 +307,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Function to render all messages
         const renderMessages = (messages) => {
+            console.log('renderMessages called with', messages.length, 'messages.'); // Debugging log
             // Check if messages have actually changed to avoid unnecessary re-renders
             if (JSON.stringify(messagesCache) === JSON.stringify(messages)) {
+                console.log('Messages cache matched. Skipping re-render.'); // Debugging log
                 // If messages haven't changed, just update scroll button visibility and return
                 toggleScrollButton();
                 return;
@@ -315,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Capture scroll state BEFORE updating content
             // Check if the user is at the very bottom or very close to it (within 20px)
             const isCurrentlyAtBottom = messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20;
+            console.log('isCurrentlyAtBottom:', isCurrentlyAtBottom); // Debugging log
 
             messagesCache = messages; // Update cache
 
@@ -323,6 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 messagesContainer.innerHTML = '<div class="text-center text-gray-500 py-10">No messages yet. Start the conversation!</div>';
                 scrollToBottom(); // Always scroll to bottom for empty state
                 toggleScrollButton(); // Update button visibility
+                console.log('No messages. Rendered empty state.'); // Debugging log
                 return;
             }
 
@@ -332,11 +338,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Scroll to bottom if:
-            // 1. Scroll is locked (always force to bottom)
-            // 2. User was already at the bottom (for new incoming messages when unlocked)
-            // 3. It's the very first load of messages (messagesCache was empty before this render)
-            if (isScrollLocked || isCurrentlyAtBottom || messagesCache.length === 0) {
+            // 1. User was already at the bottom (for new incoming messages)
+            // 2. It's the very first load of messages (messagesCache was empty before this render)
+            if (isCurrentlyAtBottom || messagesCache.length === messages.length) { // messagesCache.length === messages.length means it's the first render or full refresh
                 scrollToBottom();
+                console.log('Scrolled to bottom due to isCurrentlyAtBottom or initial load.'); // Debugging log
             }
             // After rendering, update scroll button visibility
             toggleScrollButton();
@@ -344,21 +350,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Function to fetch messages from the server
         const fetchMessages = async () => {
-            if (!currentChatRoomId) return; // Don't fetch if no room is selected
+            if (!currentChatRoomId) {
+                console.log('fetchMessages called but currentChatRoomId is null. Skipping.'); // Debugging log
+                return; // Don't fetch if no room is selected
+            }
+            console.log(`Attempting to fetch messages for chat room ID: ${currentChatRoomId}...`); // Debugging log
 
             try {
                 const response = await fetch(`/api/messages/${currentChatRoomId}`);
+                console.log('Response from /api/messages:', response.status, response.statusText); // Debugging log
+
                 if (response.status === 401 || response.status === 403) {
+                    console.log('Unauthorized/Forbidden: Redirecting to chat rooms selection.'); // Debugging log
                     window.location.href = '/chat-rooms'; // Redirect if unauthorized or access denied
                     return;
                 }
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Failed to fetch messages:', response.status, errorText); // Debugging log
                     throw new Error('Failed to fetch messages');
                 }
                 const data = await response.json();
+                console.log('Messages data received:', data.messages.length, 'messages.'); // Debugging log
                 renderMessages(data.messages);
             } catch (error) {
-                console.error('Error fetching messages:', error);
+                console.error('Error in fetchMessages:', error); // Debugging log
                 // Optionally display an error message to the user
             }
         };
@@ -396,28 +412,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Function to fetch current user and chat room details
         const fetchCurrentUserAndChatRoom = async () => {
+            console.log('Attempting to fetch current user and chat room details...'); // Debugging log
             try {
                 const response = await fetch('/api/user/me');
+                console.log('Response from /api/user/me:', response.status, response.statusText); // Debugging log
+
                 if (response.status === 401) {
+                    console.log('Unauthorized: Redirecting to login.'); // Debugging log
                     window.location.href = '/'; // Redirect to login if unauthorized
                     return;
                 }
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Failed to fetch current user/chat room:', response.status, errorText); // Debugging log
                     throw new Error('Failed to fetch current user/chat room');
                 }
                 const data = await response.json();
+                console.log('User/Chat Room data received:', data); // Debugging log
+
                 currentUserId = data.userId;
                 currentUsername = data.username;
                 currentChatRoomId = data.currentChatRoomId;
 
                 if (!currentChatRoomId) {
+                    console.log('No current chat room ID found. Redirecting to chat rooms selection.'); // Debugging log
                     window.location.href = '/chat-rooms'; // Redirect if no chat room selected
                     return;
                 }
                 chatRoomNameHeader.textContent = data.currentChatRoomName || 'Chat Room';
+                console.log(`Current User: ${currentUsername}, Chat Room: ${chatRoomNameHeader.textContent}, ID: ${currentChatRoomId}`); // Debugging log
 
             } catch (error) {
-                console.error('Error fetching current user/chat room:', error);
+                console.error('Error in fetchCurrentUserAndChatRoom:', error); // Debugging log
                 chatRoomNameHeader.textContent = 'Error Loading Chat'; // Fallback message
             }
         };
@@ -540,17 +566,23 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleScrollLockBtn.addEventListener('click', toggleScrollLock);
 
         // Initial setup for chat page: Fetch user/chat room, then messages, then start polling
+        console.log('Starting initial setup for chat page...'); // Debugging log
         fetchCurrentUserAndChatRoom().then(async () => {
+            console.log('fetchCurrentUserAndChatRoom completed.'); // Debugging log
             if (currentChatRoomId) {
-                // Set initial scroll lock state and UI
-                toggleScrollLock(); // This will set isScrollLocked to true, apply class, and scroll to bottom
-
+                console.log('currentChatRoomId is set. Proceeding to fetch messages.'); // Debugging log
                 await fetchMessages(); // Wait for initial messages to load and render
-                // Initial scroll and button visibility are now handled by renderMessages and toggleScrollLock
+                scrollToBottom(); // Ensure initial scroll to bottom after messages are rendered
+                toggleScrollButton(); // Set initial button visibility
 
+                console.log('Starting message and online user polling intervals.'); // Debugging log
                 setInterval(fetchMessages, 2000);
                 setInterval(fetchOnlineUsers, 5000);
+            } else {
+                console.log('currentChatRoomId is NOT set after fetchCurrentUserAndChatRoom. This should have redirected to /chat-rooms.'); // Debugging log
             }
+        }).catch(error => {
+            console.error('Error during initial chat page setup:', error); // Debugging log
         });
     }
 });
