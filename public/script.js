@@ -104,6 +104,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const createChatButton = document.getElementById('create-chat-button');
         const joinChatButton = document.getElementById('join-chat-button');
         const logoutButton = document.getElementById('logout-button');
+        const currentUsernameDisplay = document.getElementById('current-username-display'); // New element
+
+        // Function to fetch and display current username
+        const fetchAndDisplayUsername = async () => {
+            try {
+                const response = await fetch('/api/user/me');
+                if (response.status === 401) {
+                    window.location.href = '/'; // Redirect to login if unauthorized
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error('Failed to fetch current user');
+                }
+                const data = await response.json();
+                if (currentUsernameDisplay) {
+                    currentUsernameDisplay.textContent = `Logged in as: ${data.username}`;
+                }
+            } catch (error) {
+                console.error('Error fetching username:', error);
+                if (currentUsernameDisplay) {
+                    currentUsernameDisplay.textContent = 'Error loading username.';
+                }
+            }
+        };
+
+        // Call this function on page load for chat-rooms.html
+        fetchAndDisplayUsername();
+
 
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
