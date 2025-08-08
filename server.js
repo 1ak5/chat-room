@@ -1,0 +1,376 @@
+require('dotenv').config(); // Load environment variables from .env file
+const express = require('express');
+const session = require('express-session');
+const path = require('path');
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// --- MongoDB Connection ---
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error('Error: MONGODB_URI environment variable is not defined.');
+  process.exit(1); // Exit the process if URI is missing
+}
+
+const dbConnect = async () => {
+  try {
+    await mongoose.connect(MONGODB_URI);
+    console.log('MongoDB connected successfully!');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    process.exit(1); // Exit the process on connection failure
+  }
+};
+
+// Connect to MongoDB
+dbConnect();
+
+// --- Mongoose Schemas and Models ---
+const UserSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+  },
+  hashedPin: {
+    type: String,
+    required: true,
+  },
+}, { timestamps: true });
+const User = mongoose.model('User', UserSchema);
+
+const ChatRoomSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+  },
+  hashedPin: {
+    type: String,
+    required: true,
+  },
+  participants: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+}, { timestamps: true });
+const ChatRoom = mongoose.model('ChatRoom', ChatRoomSchema);
+
+const MessageSchema = new mongoose.Schema({
+  chatRoomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ChatRoom',
+    required: true,
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  content: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+}, { timestamps: true });
+const Message = mongoose.model('Message', MessageSchema);
+
+// --- Express Middleware ---
+app.use(express.json()); // For parsing application/json
+app.use(express.urlencoded({ extended: true })); // For parsing application/x-www-form-urlencoded
+
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'supersecretkey', // Use a strong secret from .env
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    sameSite: 'lax',
+  }
+}));
+
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// --- Authentication Middleware ---
+const isAuthenticated = (req, res, next) => {
+  if (req.session.userId) {
+    next();
+  } else {
+    res.redirect('/'); // Redirect to login/register if not authenticated
+  }
+};
+
+// --- Routes ---
+
+// Register route
+app.post('/api/auth/register', async (req, res) => {
+  const { username, pin } = req.body;
+
+  if (!username || !pin || username.length < 3 || pin.length < 4) {
+    return res.status(400).json({ message: 'Username must be at least 3 characters and PIN at least 4 characters.' });
+  }
+
+  try {
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(409).json({ message: 'Username already exists. Please choose a different one.' });
+    }
+
+    const hashedPin = await bcrypt.hash(pin, 10);
+    const newUser = new User({ username, hashedPin });
+    await newUser.save();
+
+    req.session.userId = newUser._id;
+    req.session.username = newUser.username;
+    res.status(201).json({ message: 'Registration successful!', redirect: '/chat-rooms' }); // Redirect to chat-rooms
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Failed to register. Please try again.' });
+  }
+});
+
+// Login route
+app.post('/api/auth/login', async (req, res) => {
+  const { username, pin } = req.body;
+
+  if (!username || !pin) {
+    return res.status(400).json({ message: 'Username and PIN are required.' });
+  }
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid username or PIN.' });
+    }
+
+    const isPinValid = await bcrypt.compare(pin, user.hashedPin);
+    if (!isPinValid) {
+      return res.status(401).json({ message: 'Invalid username or PIN.' });
+    }
+
+    req.session.userId = user._id;
+    req.session.username = user.username;
+    res.status(200).json({ message: 'Login successful!', redirect: '/chat-rooms' }); // Redirect to chat-rooms
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Failed to login. Please try again.' });
+  }
+});
+
+// Logout route
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ message: 'Failed to logout.' });
+    }
+    res.status(200).json({ message: 'Logged out successfully!', redirect: '/' });
+  });
+});
+
+// Get current user and chat room details (new/updated route)
+app.get('/api/user/me', isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId).select('username').lean();
+    if (!user) {
+      req.session.destroy(() => res.status(401).json({ message: 'User not found, please log in again.' }));
+      return;
+    }
+    res.status(200).json({
+      userId: user._id,
+      username: user.username,
+      currentChatRoomId: req.session.currentChatRoomId || null,
+      currentChatRoomName: req.session.currentChatRoomName || null
+    });
+  } catch (error) {
+    console.error('Error fetching user/session data:', error);
+    res.status(500).json({ message: 'Failed to fetch user data.' });
+  }
+});
+
+// Create Chat Room
+app.post('/api/chatrooms/create', isAuthenticated, async (req, res) => {
+  const { name, pin } = req.body;
+  const userId = req.session.userId;
+
+  if (!name || !pin || name.length < 3 || pin.length < 4) {
+    return res.status(400).json({ message: 'Chat name must be at least 3 characters and PIN at least 4 characters.' });
+  }
+
+  try {
+    const existingRoom = await ChatRoom.findOne({ name });
+    if (existingRoom) {
+      return res.status(409).json({ message: 'Chat room with this name already exists.' });
+    }
+
+    const hashedPin = await bcrypt.hash(pin, 10);
+    const newRoom = new ChatRoom({ name, hashedPin, participants: [userId] });
+    await newRoom.save();
+
+    req.session.currentChatRoomId = newRoom._id;
+    req.session.currentChatRoomName = newRoom.name;
+    res.status(201).json({ message: 'Chat room created and joined!', redirect: '/chat' });
+  } catch (error) {
+    console.error('Error creating chat room:', error);
+    res.status(500).json({ message: 'Failed to create chat room.' });
+  }
+});
+
+// Join Chat Room
+app.post('/api/chatrooms/join', isAuthenticated, async (req, res) => {
+  const { name, pin } = req.body;
+  const userId = req.session.userId;
+
+  if (!name || !pin) {
+    return res.status(400).json({ message: 'Chat name and PIN are required.' });
+  }
+
+  try {
+    const room = await ChatRoom.findOne({ name });
+    if (!room) {
+      return res.status(404).json({ message: 'Chat room not found.' });
+    }
+
+    const isPinValid = await bcrypt.compare(pin, room.hashedPin);
+    if (!isPinValid) {
+      return res.status(401).json({ message: 'Invalid PIN for this chat room.' });
+    }
+
+    // Add user to participants if not already there
+    if (!room.participants.includes(userId)) {
+      room.participants.push(userId);
+      await room.save();
+    }
+
+    req.session.currentChatRoomId = room._id;
+    req.session.currentChatRoomName = room.name;
+    res.status(200).json({ message: 'Joined chat room!', redirect: '/chat' });
+  } catch (error) {
+    console.error('Error joining chat room:', error);
+    res.status(500).json({ message: 'Failed to join chat room.' });
+  }
+});
+
+// Get messages for a specific chat room (protected)
+app.get('/api/messages/:chatRoomId', isAuthenticated, async (req, res) => {
+  const { chatRoomId } = req.params;
+  const userId = req.session.userId;
+
+  try {
+    // Verify user is a participant of this chat room
+    const room = await ChatRoom.findById(chatRoomId);
+    if (!room || !room.participants.includes(userId)) {
+      return res.status(403).json({ message: 'Access denied to this chat room.' });
+    }
+
+    const messages = await Message.find({ chatRoomId })
+      .populate('userId', 'username') // Populate username from User model
+      .sort({ timestamp: 1 })
+      .lean();
+
+    const messagesFormatted = messages.map(msg => ({
+      _id: msg._id.toString(),
+      chatRoomId: msg.chatRoomId.toString(),
+      userId: msg.userId._id.toString(),
+      username: msg.userId.username, // Populated username
+      content: msg.content,
+      timestamp: msg.timestamp,
+    }));
+
+    res.status(200).json({ messages: messagesFormatted });
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Failed to fetch messages.' });
+  }
+});
+
+// Send message to a specific chat room (protected)
+app.post('/api/messages/:chatRoomId', isAuthenticated, async (req, res) => {
+  const { chatRoomId } = req.params;
+  const { content } = req.body;
+  const userId = req.session.userId;
+
+  if (!content || content.trim() === '') {
+    return res.status(400).json({ message: 'Message content cannot be empty.' });
+  }
+
+  try {
+    // Verify user is a participant of this chat room
+    const room = await ChatRoom.findById(chatRoomId);
+    if (!room || !room.participants.includes(userId)) {
+      return res.status(403).json({ message: 'Access denied to this chat room.' });
+    }
+
+    const newMessage = new Message({
+      chatRoomId,
+      userId,
+      content: content.trim(),
+    });
+    await newMessage.save();
+
+    // Optionally, return the populated message for optimistic update on other clients
+    const populatedMessage = await Message.findById(newMessage._id)
+      .populate('userId', 'username')
+      .lean();
+
+    res.status(201).json({
+      message: 'Message sent successfully!',
+      newMessage: {
+        _id: populatedMessage._id.toString(),
+        chatRoomId: populatedMessage.chatRoomId.toString(),
+        userId: populatedMessage.userId._id.toString(),
+        username: populatedMessage.userId.username,
+        content: populatedMessage.content,
+        timestamp: populatedMessage.timestamp,
+      }
+    });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ message: 'Failed to send message.' });
+  }
+});
+
+// Serve chat-rooms.html if authenticated
+app.get('/chat-rooms', isAuthenticated, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'chat-rooms.html'));
+});
+
+// Serve chat.html if authenticated and in a chat room
+app.get('/chat', isAuthenticated, (req, res) => {
+  if (!req.session.currentChatRoomId) {
+    return res.redirect('/chat-rooms'); // Redirect if no chat room selected
+  }
+  res.sendFile(path.join(__dirname, 'public', 'chat.html'));
+});
+
+// Redirect root to index.html (login/register)
+app.get('/', (req, res) => {
+  if (req.session.userId) {
+    if (req.session.currentChatRoomId) {
+      res.redirect('/chat');
+    } else {
+      res.redirect('/chat-rooms');
+    }
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
