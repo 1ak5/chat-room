@@ -1,426 +1,578 @@
 /* General Styles */
 :root {
-    --primary-color: #6B46C1; /* Purple */
-    --secondary-color: #805AD5; /* Lighter Purple */
-    --accent-color: #D6BCFA; /* Very Light Purple */
-    --text-color: #333;
-    --light-text-color: #666;
-    --white: #fff;
-    --light-gray: #f9fafb;
-    --medium-gray: #e5e7eb;
-    --dark-gray: #4b5563;
-    --red-error: #ef4444;
+  --primary-color: #6B46C1; /* Purple */
+  --secondary-color: #805AD5; /* Lighter Purple */
+  --accent-color: #D6BCFA; /* Very Light Purple */
+  --text-color: #333;
+  --light-text-color: #666;
+  --white: #fff;
+  --light-gray: #f9fafb;
+  --medium-gray: #e5e7eb;
+  --dark-gray: #4b5563;
+  --red-error: #ef4444;
 }
 
 /* Added for full viewport height on all pages */
 html, body {
-    height: 100%; /* Ensure html and body take full viewport height */
-    margin: 0;
-    padding: 0;
-    overflow: hidden; /* Prevent scrolling on the entire page */
+  height: 100%; /* Ensure html and body take full viewport height */
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent scrolling on the entire page */
 }
 
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-    font-family: 'Inter', sans-serif; /* Assuming Inter font is available or fallback */
-    color: var(--text-color);
-    line-height: 1.6;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh; /* Fallback for older browsers */
-    background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+  font-family: 'Inter', sans-serif; /* Assuming Inter font is available or fallback */
+  color: var(--text-color);
+  line-height: 1.6;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* Fallback for older browsers */
+  background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
 }
 
 /* Auth Page Styles (also used for Chat Rooms page) */
 .auth-body {
-    background: linear-gradient(135deg, #f0f4f8, #d9e2ec); /* Soft gradient for auth */
-    /* Ensure auth-body also takes full height and prevents its own scroll */
-    height: 100vh;
-    overflow: hidden;
+  background: linear-gradient(135deg, #f0f4f8, #d9e2ec); /* Soft gradient for auth */
+  height: 100vh; /* Ensure auth-body also takes full height */
+  overflow: hidden; /* Prevent auth-body from scrolling */
 }
 
 .auth-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh; /* Ensure it takes full height on auth pages */
-    width: 100%;
-    padding: 20px;
-    /* Removed overflow: hidden here, let body handle it */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* Ensure it takes full height on auth pages */
+  width: 100%;
+  padding: 20px;
 }
 
 .auth-card {
-    background-color: var(--white);
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 450px; /* Slightly wider for tabs */
-    text-align: center;
+  background-color: var(--white);
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 450px; /* Slightly wider for tabs */
+  text-align: center;
 }
 
 .auth-title {
-    font-size: 2.2em;
-    font-weight: 700;
-    color: var(--primary-color);
-    margin-bottom: 10px;
+  font-size: 2.2em;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 10px;
 }
 
 .auth-description {
-    font-size: 1em;
-    color: var(--light-text-color);
-    margin-bottom: 30px;
+  font-size: 1em;
+  color: var(--light-text-color);
+  margin-bottom: 30px;
 }
 
 .auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .form-group {
-    text-align: left;
+  text-align: left;
 }
 
 .form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: var(--dark-gray);
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--dark-gray);
 }
 
 .form-group input {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--medium-gray);
-    border-radius: 8px;
-    font-size: 1em;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid var(--medium-gray);
+  border-radius: 8px;
+  font-size: 1em;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .form-group input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
 }
 
 .error-message {
-    color: var(--red-error);
-    font-size: 0.9em;
-    margin-top: 10px;
-    text-align: center;
-    min-height: 1.2em; /* Reserve space for message */
+  color: var(--red-error);
+  font-size: 0.9em;
+  margin-top: 10px;
+  text-align: center;
+  min-height: 1.2em; /* Reserve space for message */
 }
 
 .auth-button {
-    background-color: var(--primary-color);
-    color: var(--white);
-    padding: 14px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+  background-color: var(--primary-color);
+  color: var(--white);
+  padding: 14px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .auth-button:hover {
-    background-color: var(--secondary-color);
-    transform: translateY(-2px);
+  background-color: var(--secondary-color);
+  transform: translateY(-2px);
 }
 
 .auth-button:active {
-    transform: translateY(0);
+  transform: translateY(0);
 }
 
 .auth-switch {
-    margin-top: 25px;
-    font-size: 0.95em;
-    color: var(--light-text-color);
+  margin-top: 25px;
+  font-size: 0.95em;
+  color: var(--light-text-color);
 }
 
 .switch-button {
-    background: none;
-    border: none;
-    color: var(--primary-color);
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: underline;
-    margin-left: 5px;
-    transition: color 0.3s ease;
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-left: 5px;
+  transition: color 0.3s ease;
 }
 
 .switch-button:hover {
-    color: var(--secondary-color);
+  color: var(--secondary-color);
 }
 
 /* Tabbed Interface for Chat Rooms */
 .tab-container {
-    display: flex;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--medium-gray);
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--medium-gray);
 }
 
 .tab-button {
-    flex: 1;
-    padding: 12px 0;
-    background: none;
-    border: none;
-    font-size: 1em;
-    font-weight: 600;
-    color: var(--light-text-color);
-    cursor: pointer;
-    transition: color 0.3s ease, border-bottom 0.3s ease;
-    border-bottom: 2px solid transparent;
+  flex: 1;
+  padding: 12px 0;
+  background: none;
+  border: none;
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--light-text-color);
+  cursor: pointer;
+  transition: color 0.3s ease, border-bottom 0.3s ease;
+  border-bottom: 2px solid transparent;
 }
 
 .tab-button.active {
-    color: var(--primary-color);
-    border-bottom: 2px solid var(--primary-color);
+  color: var(--primary-color);
+  border-bottom: 2px solid var(--primary-color);
 }
 
 .tab-content {
-    display: none;
+  display: none;
 }
 
 .tab-content.active {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 
 /* Chat Page Styles */
 .chat-body {
-    background: linear-gradient(135deg, #e0f2fe, #bfdbfe); /* Light blue gradient for chat */
-    display: flex;
-    flex-direction: column;
-    height: 100vh; /* Use 100vh to ensure it takes full viewport height */
-    width: 100%;
-    padding: 0; /* Remove padding from body, let chat-container handle it */
-    overflow: hidden; /* Prevent body from scrolling */
+  background: linear-gradient(135deg, #e0f2fe, #bfdbfe); /* Light blue gradient for chat */
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Use 100vh to ensure it takes full viewport height */
+  width: 100%;
+  padding: 0; /* Remove padding from body, let chat-container handle it */
+  overflow: hidden; /* Prevent body from scrolling */
 }
 
 .chat-container {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1; /* Allows container to fill remaining space in chat-body */
-    max-width: 700px;
-    width: 100%;
-    background-color: var(--white);
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    overflow: hidden; /* Important for internal scrolling of messages */
-    margin: 10px auto; /* Center the chat container with some margin */
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Allows container to fill remaining space in chat-body */
+  max-width: 700px;
+  width: 100%;
+  background-color: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  overflow: hidden; /* Important for internal scrolling of messages */
+  margin: 10px auto; /* Center the chat container with some margin */
 }
 
 .chat-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 18px 25px;
-    background-color: var(--primary-color);
-    color: var(--white);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    flex-shrink: 0; /* Prevent header from shrinking */
+  display: flex;
+  flex-direction: column; /* Changed to column to stack chat name and online users */
+  align-items: flex-start; /* Align items to start */
+  padding: 18px 25px;
+  background-color: var(--primary-color);
+  color: var(--white);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0; /* Prevent header from shrinking */
+  position: relative; /* For header-buttons positioning */
 }
 
 .chat-header h1 {
-    font-size: 1.5em;
-    font-weight: 600;
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-bottom: 5px; /* Space between chat name and online users */
 }
 
 .header-buttons {
-    display: flex;
-    gap: 10px;
+  position: absolute; /* Position buttons absolutely */
+  top: 18px;
+  right: 25px;
+  display: flex;
+  gap: 10px;
 }
 
 .logout-button, .leave-chat-button {
-    background-color: var(--white);
-    color: var(--primary-color);
-    padding: 8px 15px;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.9em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
+  background-color: var(--white);
+  color: var(--primary-color);
+  padding: 8px 15px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .logout-button:hover, .leave-chat-button:hover {
-    background-color: var(--accent-color);
-    color: var(--primary-color);
+  background-color: var(--accent-color);
+  color: var(--primary-color);
 }
 
+/* New Scroll Lock Toggle Button */
+.toggle-scroll-lock-btn {
+    position: absolute;
+    
+ 
+    
+
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+
+  
+    z-index: 10; /* Ensure it's above other elements if needed */
+}
+
+
+
+
+/* Online Users List */
+.online-users-list {
+  font-size: 0.85em;
+  color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: calc(100% - 120px); /* Adjust based on button width */
+}
+
+.online-user-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: rgba(255, 255, 255, 0.15);
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.online-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #4CAF50; /* Green */
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+
+/* Updated Chat Main and Messages Container Styles */
 .chat-main {
-    flex-grow: 1; /* Allows message area to take all available space */
+    flex-grow: 1;
     padding: 20px;
-    overflow-y: auto; /* Enables scrolling for messages */
     background-color: var(--light-gray);
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* chat-main itself does not scroll, messages-container does */
 }
 
 .messages-container {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    padding-bottom: 10px; /* Space for scrollbar */
+    padding-bottom: 10px;
+    flex-grow: 1; /* Allow messages-container to fill available space */
+    /* Default state (unlocked) */
+    overflow-y: auto; /* Allow scrolling */
+    justify-content: flex-start; /* Content starts from top */
 }
 
+.messages-container.scroll-locked {
+    overflow-y: hidden; /* Prevent manual scrolling when locked */
+    justify-content: flex-end; /* Force content to bottom when locked */
+}
+
+
 .message-bubble {
-    max-width: 75%;
-    padding: 12px 18px;
-    border-radius: 18px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
-    word-wrap: break-word;
-    position: relative;
+  max-width: 75%;
+  padding: 12px 18px;
+  border-radius: 18px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  word-wrap: break-word;
+  position: relative;
+  cursor: pointer; /* Indicate it's interactive */
 }
 
 .message-bubble.sent {
-    align-self: flex-end;
-    background-color: var(--primary-color);
-    color: var(--white);
-    border-bottom-right-radius: 4px;
+  align-self: flex-end;
+  background-color: var(--primary-color);
+  color: var(--white);
+  border-bottom-right-radius: 4px;
 }
 
 .message-bubble.received {
-    align-self: flex-start;
-    background-color: var(--white);
-    color: var(--text-color);
-    border: 1px solid var(--medium-gray);
-    border-bottom-left-radius: 4px;
+  align-self: flex-start;
+  background-color: var(--white);
+  color: var(--text-color);
+  border: 1px solid var(--medium-gray);
+  border-bottom-left-radius: 4px;
 }
 
 .message-username {
-    font-weight: 600;
-    font-size: 0.9em;
-    margin-bottom: 5px;
-    color: rgba(255, 255, 255, 0.9); /* For sent messages */
+  font-weight: 600;
+  font-size: 0.9em;
+  margin-bottom: 5px;
+  color: rgba(255, 255, 255, 0.9); /* For sent messages */
 }
 
 .message-bubble.received .message-username {
-    color: var(--primary-color); /* For received messages */
+  color: var(--primary-color); /* For received messages */
 }
 
 .message-content {
-    font-size: 1em;
-    margin-bottom: 5px;
+  font-size: 1em;
+  margin-bottom: 5px;
 }
 
 .message-timestamp {
-    font-size: 0.75em;
-    color: rgba(255, 255, 255, 0.7); /* For sent messages */
-    text-align: right;
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.7); /* For sent messages */
+  text-align: right;
 }
 
 .message-bubble.received .message-timestamp {
-    color: var(--light-text-color); /* For received messages */
+  color: var(--light-text-color); /* For received messages */
 }
 
+/* Like Heart */
+.message-bubble .like-heart {
+  position: absolute;
+  bottom: -10px; /* Adjust position */
+  right: 5px; /* Adjust position */
+  font-size: 1.2em;
+  color: #ff6b6b; /* Red heart */
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  pointer-events: none; /* Ensure it doesn't block clicks */
+}
+
+.message-bubble.sent .like-heart {
+  right: auto;
+  left: 5px;
+}
+
+.message-bubble.liked .like-heart {
+  opacity: 1;
+  transform: scale(1);
+}
+
+
 .chat-footer {
-    padding: 15px 20px;
-    background-color: var(--white);
-    border-top: 1px solid var(--medium-gray);
-    flex-shrink: 0; /* Prevent footer from shrinking */
+  padding: 15px 20px;
+  background-color: var(--white);
+  border-top: 1px solid var(--medium-gray);
+  flex-shrink: 0; /* Prevent footer from shrinking */
 }
 
 .message-form {
-    display: flex;
-    gap: 10px;
+  display: flex;
+  gap: 10px;
 }
 
 .message-form input {
-    flex-grow: 1;
-    padding: 12px 18px;
-    border: 1px solid var(--medium-gray);
-    border-radius: 25px;
-    font-size: 1em;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  flex-grow: 1;
+  padding: 12px 18px;
+  border: 1px solid var(--medium-gray);
+  border-radius: 25px;
+  font-size: 1em;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .message-form input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
 }
 
 .send-button {
-    background-color: var(--primary-color);
-    color: var(--white);
-    padding: 12px 20px;
-    border: none;
-    border-radius: 25px;
-    font-size: 1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+  background-color: var(--primary-color);
+  color: var(--white);
+  padding: 12px 20px;
+  border: none;
+  border-radius: 25px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .send-button:hover {
-    background-color: var(--secondary-color);
-    transform: translateY(-1px);
+  background-color: var(--secondary-color);
+  transform: translateY(-1px);
 }
 
 .send-button:active {
-    transform: translateY(0);
+  transform: translateY(0);
+}
+
+/* Scroll to bottom button */
+.scroll-to-bottom-btn {
+  position: fixed;
+  bottom: 80px; /* Adjust based on footer height */
+  right: 20px;
+  background-color: var(--primary-color);
+  color: var(--white);
+  border: none;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  font-size: 1.5em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, transform 0.2s ease, opacity 0.3s ease;
+  opacity: 0; /* Hidden by default */
+  pointer-events: none; /* Disable clicks when hidden */
+  z-index: 100;
+}
+
+.scroll-to-bottom-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.scroll-to-bottom-btn:hover {
+  background-color: var(--secondary-color);
+  transform: translateY(-2px);
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .auth-card, .chat-container {
-        margin: 0; /* Remove margin on smaller screens */
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    }
+  .auth-card, .chat-container {
+      margin: 0; /* Remove margin on smaller screens */
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
 
-    .auth-card {
-        padding: 30px;
-    }
+  .auth-card {
+      padding: 30px;
+  }
 
-    .auth-title {
-        font-size: 1.8em;
-    }
+  .auth-title {
+      font-size: 1.8em;
+  }
 
-    .auth-description {
-        font-size: 0.9em;
-    }
+  .auth-description {
+      font-size: 0.9em;
+  }
 
-    .chat-body {
-        padding: 0; /* Ensure no extra padding on mobile */
-    }
+  .chat-body {
+      padding: 0; /* Ensure no extra padding on mobile */
+  }
 
-    .chat-container {
-        height: 100%; /* Ensure it takes full height */
-        border-radius: 0; /* Full width on mobile */
-        margin: 0; /* No margin on mobile */
-    }
+  .chat-container {
+      height: 100%; /* Ensure it takes full height */
+      border-radius: 0; /* Full width on mobile */
+      margin: 0; /* No margin on mobile */
+  }
 
-    .chat-header {
-        padding: 15px 20px;
-    }
+  .chat-header {
+      padding: 15px 20px;
+      flex-direction: column; /* Stack on mobile */
+      align-items: flex-start;
+  }
 
-    .chat-header h1 {
-        font-size: 1.2em;
-    }
+  .chat-header h1 {
+      font-size: 1.2em;
+  }
 
-    .logout-button, .leave-chat-button {
-        padding: 5px 10px;
-        font-size: 0.75em;
-    }
+  .header-buttons {
+      position: static; /* Revert to static for flow */
+      margin-top: 10px; /* Space from chat name */
+      width: 100%;
+      justify-content: flex-end; /* Align buttons to right */
+  }
 
-    .chat-main {
-        padding: 15px;
-    }
+  .logout-button, .leave-chat-button {
+      padding: 5px 10px;
+      font-size: 0.75em;
+  }
 
-    .message-form input, .send-button {
-        padding: 10px 15px;
-        font-size: 0.9em;
-    }
+  .toggle-scroll-lock-btn {
+      top: 15px; /* Adjust for mobile header */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 35px;
+      height: 35px;
+      font-size: 1.2em;
+  }
+
+  .chat-main {
+      padding: 15px;
+  }
+
+  .message-form input, .send-button {
+      padding: 10px 15px;
+      font-size: 0.9em;
+  }
+
+  .scroll-to-bottom-btn {
+      bottom: 70px; /* Adjust for mobile footer */
+      right: 15px;
+      width: 40px;
+      height: 40px;
+      font-size: 1.3em;
+  }
+
+  .online-users-list {
+      max-width: 100%; /* Take full width on mobile */
+      margin-top: 5px; /* Space from chat name */
+  }
 }
