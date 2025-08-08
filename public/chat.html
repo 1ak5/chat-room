@@ -10,6 +10,11 @@
     <div class="chat-container">
         <header class="chat-header">
             <h1 id="chat-room-name">Loading Chat...</h1>
+            <div id="online-users-list" class="online-users-list">
+                <!-- Online users will be displayed here -->
+            </div>
+            <!-- New Scroll Lock Toggle Button -->
+            <button id="toggle-scroll-lock-btn" class="toggle-scroll-lock-btn"></button>
             <div class="header-buttons">
                 <button id="leave-chat-button" class="leave-chat-button">Leave Chat</button>
                 <button id="logout-button" class="logout-button">Logout</button>
@@ -17,7 +22,7 @@
         </header>
         <main class="chat-main">
             <div id="messages-container" class="messages-container">
-                 Messages will be loaded here 
+                 <!-- Messages will be loaded here -->
             </div>
         </main>
         <footer class="chat-footer">
@@ -27,6 +32,7 @@
             </form>
         </footer>
     </div>
+    <button id="scroll-to-bottom-btn" class="scroll-to-bottom-btn">↓</button>
     <script src="/script.js"></script>
 </body>
 </html>
