@@ -215,15 +215,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentChatRoomId = null;
         let messagesCache = []; // To store messages and prevent re-rendering identical lists
 
-        // Helper function to append a single message bubble to the UI
-        const appendMessageToUI = (msg, isOptimistic = false) => {
+        // Helper function to create a single message bubble element
+        const createMessageBubbleElement = (msg) => {
             const messageBubble = document.createElement('div');
             messageBubble.classList.add('message-bubble');
             messageBubble.classList.add(msg.userId === currentUserId ? 'sent' : 'received');
-
-            if (isOptimistic) {
-                messageBubble.dataset.tempId = msg._id; // Mark optimistic message with a temporary ID
-            }
 
             const usernameSpan = document.createElement('div');
             usernameSpan.classList.add('message-username');
@@ -241,13 +237,13 @@ document.addEventListener('DOMContentLoaded', () => {
             messageBubble.appendChild(usernameSpan);
             messageBubble.appendChild(contentP);
             messageBubble.appendChild(timestampSpan);
-            messagesContainer.appendChild(messageBubble);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom
+            return messageBubble;
         };
 
         // Function to render all messages
         const renderMessages = (messages) => {
             // Check if messages have actually changed to avoid unnecessary re-renders
+            // This is a simple check, for complex apps, a more robust diffing might be needed
             if (JSON.stringify(messagesCache) === JSON.stringify(messages)) {
                 return;
             }
@@ -259,7 +255,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            messages.forEach(msg => appendMessageToUI(msg));
+            messages.forEach(msg => {
+                const messageElement = createMessageBubbleElement(msg);
+                messagesContainer.appendChild(messageElement);
+            });
+
+            // Scroll to bottom ONLY ONCE after all messages are added
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         };
 
         // Function to fetch messages from the server
@@ -328,7 +330,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 content: content,
                 timestamp: new Date().toISOString(),
             };
-            appendMessageToUI(tempMessage, true); // Add to UI immediately
+            const optimisticMessageElement = createMessageBubbleElement(tempMessage);
+            optimisticMessageElement.dataset.tempId = tempMessage._id; // Mark optimistic message
+            messagesContainer.appendChild(optimisticMessageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom after optimistic add
+
             messageInput.value = ''; // Clear input field
 
             try {
@@ -387,20 +393,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // A more robust solution would involve a server-side endpoint to remove the user
             // from the chat room's participants list. For simplicity, we'll just clear session.
             try {
-                const response = await fetch('/api/auth/logout', { method: 'POST' }); // Re-use logout to clear session
-                const data = await response.json();
-                if (response.ok) {
-                    // After logout, redirect to chat-rooms page (which will then redirect to login)
-                    // Or, if we want to stay logged in but just leave the room, we'd need a dedicated server endpoint
-                    // For now, we'll just redirect to chat-rooms page, which will handle session check.
-                    window.location.href = '/chat-rooms';
-                } else {
-                    console.error('Failed to leave chat:', data.message);
-                    alert('Failed to leave chat. Please try again.');
-                }
+                // We can't directly clear currentChatRoomId from session without a dedicated endpoint.
+                // For now, we'll redirect to chat-rooms, which will effectively "leave" the room
+                // by not having a currentChatRoomId in the session for the next page load.
+                // If you want to truly remove from server-side session, you'd need a new API route.
+                window.location.href = '/chat-rooms';
             } catch (error) {
-                console.error('Leave chat fetch error:', error);
-                alert('Network error during leave chat. Please try again.');
+                console.error('Leave chat error:', error);
+                alert('Failed to leave chat. Please try again.');
             }
         });
 
