@@ -12,6 +12,13 @@
     --red-error: #ef4444;
 }
 
+/* Added for full viewport height on all pages */
+html, body {
+    height: 100%; /* Ensure html and body take full viewport height */
+    margin: 0;
+    padding: 0;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -25,7 +32,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    min-height: 100vh; /* Fallback for older browsers */
     background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
 }
 
@@ -38,7 +45,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    min-height: 100vh; /* Ensure it takes full height on auth pages */
     width: 100%;
     padding: 20px;
 }
@@ -188,23 +195,25 @@ body {
     background: linear-gradient(135deg, #e0f2fe, #bfdbfe); /* Light blue gradient for chat */
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    min-height: 100vh;
+    /* Changed height to 100% to fill parent (html, body) */
+    height: 100%;
     width: 100%;
+    /* Added padding to body instead of margin on container */
+    padding: 10px; /* Adjust as needed for spacing around the chat box */
 }
 
 .chat-container {
     display: flex;
     flex-direction: column;
-    width: 100%;
+    /* Changed height to 100% and flex-grow to fill available space */
+    flex-grow: 1; /* Allows container to fill remaining space in chat-body */
     max-width: 700px;
-    height: 90vh; /* Adjust height for better fit */
+    width: 100%;
     background-color: var(--white);
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-    margin: 20px; /* Add margin for spacing */
+    overflow: hidden; /* Important for internal scrolling of messages */
+    /* Removed margin here as padding is on body now */
 }
 
 .chat-header {
@@ -216,6 +225,7 @@ body {
     color: var(--white);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .chat-header h1 {
@@ -246,9 +256,9 @@ body {
 }
 
 .chat-main {
-    flex-grow: 1;
+    flex-grow: 1; /* Allows message area to take all available space */
     padding: 20px;
-    overflow-y: auto;
+    overflow-y: auto; /* Enables scrolling for messages */
     background-color: var(--light-gray);
     display: flex;
     flex-direction: column;
@@ -315,6 +325,7 @@ body {
     padding: 15px 20px;
     background-color: var(--white);
     border-top: 1px solid var(--medium-gray);
+    flex-shrink: 0; /* Prevent footer from shrinking */
 }
 
 .message-form {
@@ -361,7 +372,7 @@ body {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .auth-card, .chat-container {
-        margin: 10px;
+        margin: 0; /* Remove margin on smaller screens */
         border-radius: 8px;
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     }
@@ -378,17 +389,29 @@ body {
         font-size: 0.9em;
     }
 
+    .chat-body {
+        padding: 5px; /* Reduce padding on smaller screens */
+    }
+
     .chat-container {
-        height: 95vh;
+        height: 100%; /* Ensure it takes full height */
+    }
+
+    .chat-header {
+        padding: 15px 20px;
     }
 
     .chat-header h1 {
-        font-size: 1.3em;
+        font-size: 1.2em;
     }
 
     .logout-button, .leave-chat-button {
-        padding: 6px 12px;
-        font-size: 0.8em;
+        padding: 5px 10px;
+        font-size: 0.75em;
+    }
+
+    .chat-main {
+        padding: 15px;
     }
 
     .message-form input, .send-button {
