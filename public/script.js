@@ -102,9 +102,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
           if (response.ok) {
             displayMessage(errorMessage, data.message, false)
+            // Wait a bit longer for session to be properly saved
             setTimeout(() => {
               window.location.href = data.redirect
-            }, 1000)
+            }, 1500)
           } else {
             displayMessage(errorMessage, data.message || "An unexpected error occurred.")
           }
@@ -211,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
             displayMessage(createErrorMessage, data.message, false)
             setTimeout(() => {
               window.location.href = data.redirect
-            }, 1000)
+            }, 1500)
           } else {
             displayMessage(createErrorMessage, data.message || "Failed to create chat room.")
           }
@@ -245,7 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
             displayMessage(joinErrorMessage, data.message, false)
             setTimeout(() => {
               window.location.href = data.redirect
-            }, 1000)
+            }, 1500)
           } else {
             displayMessage(joinErrorMessage, data.message || "Failed to join chat room.")
           }
@@ -607,6 +608,7 @@ document.addEventListener("DOMContentLoaded", () => {
         timestamp: new Date().toISOString(),
         replyTo: replyingTo
           ? {
+              _id: replyingTo._id,
               username: replyingTo.username,
               content: replyingTo.content,
             }
@@ -635,6 +637,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (!response.ok) {
           throw new Error("Failed to send message")
+        }
+
+        // Remove the temporary message since real message will come via polling
+        const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempMessage._id}"]`)
+        if (tempBubble) {
+          tempBubble.remove()
         }
       } catch (error) {
         console.error("Error sending message:", error)
