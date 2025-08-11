@@ -332,13 +332,13 @@ document.addEventListener("DOMContentLoaded", () => {
       contentP.classList.add("message-content")
       contentP.textContent = msg.content
 
-      if (msg.messageType === 'image' && msg.imageUrl) {
+      if (msg.messageType === 'image' && msg.imageData) {
         const imageContainer = document.createElement("div")
         imageContainer.classList.add("message-image-container")
 
         const image = document.createElement("img")
         image.classList.add("message-image")
-        image.src = msg.imageUrl
+        image.src = msg.imageData
         image.alt = "Shared image"
         image.loading = "lazy"
 
@@ -657,28 +657,48 @@ document.addEventListener("DOMContentLoaded", () => {
       sendButton.disabled = true
       sendButton.textContent = "Sending..."
 
-      let imageUrl = null;
+      const messageData = {
+        content: content || '📷 Image',
+        replyTo: replyingTo ? replyingTo._id : null,
+        messageType: 'text',
+        imageData: null,
+        contentType: null
+      }
+
       if (selectedImage) {
-        imageUrl = await handleImageSelect(selectedImage);
-        if (!imageUrl) {
+        const formData = new FormData();
+        formData.append('image', selectedImage);
+        
+        try {
+          const response = await fetch('/api/upload-image', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error('Image upload failed');
+          }
+
+          const imageInfo = await response.json();
+          messageData.imageData = imageInfo.imageData;
+          messageData.contentType = imageInfo.contentType;
+          messageData.messageType = 'image';
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          alert('Failed to upload image. Please try again.');
           sendButton.disabled = false;
           sendButton.textContent = "Send";
           return;
         }
       }
 
-      const messageData = {
-        content: content || (imageUrl ? '📷 Image' : ''),
-        replyTo: replyingTo ? replyingTo._id : null,
-        messageType: imageUrl ? 'image' : 'text',
-        imageUrl: imageUrl
-      }
-
       const tempMessage = {
         _id: `temp-${Date.now()}`,
         userId: currentUserId,
         username: currentUsername,
-        content: content,
+        content: messageData.content,
+        messageType: messageData.messageType,
+        imageData: messageData.imageData,
         timestamp: new Date().toISOString(),
         replyTo: replyingTo
           ? {
