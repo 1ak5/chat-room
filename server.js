@@ -4,6 +4,9 @@ const session = require("express-session")
 const path = require("path")
 const mongoose = require("mongoose")
 const bcrypt = require("bcryptjs")
+const multer = require("multer")
+const sharp = require("sharp")
+const fs = require("fs")
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -92,6 +95,15 @@ const MessageSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    messageType: {
+      type: String,
+      enum: ['text', 'image'],
+      default: 'text'
+    },
+    imageUrl: {
+      type: String,
+      default: null
+    },
     replyTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
@@ -151,6 +163,62 @@ const updateLastActive = async (req, res, next) => {
   next()
 }
 app.use(updateLastActive) // Apply this middleware to all routes after session
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'public/uploads/')
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, uniqueSuffix + path.extname(file.originalname))
+  }
+})
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true)
+    } else {
+      cb(new Error('Only image files are allowed!'))
+    }
+  }
+})
+
+// Image upload and compression endpoint
+app.post('/api/upload-image', isAuthenticated, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file uploaded' })
+    }
+
+    const compressedFilename = 'compressed-' + req.file.filename
+    const compressedFilePath = path.join('public/uploads', compressedFilename)
+
+    // Compress image
+    await sharp(req.file.path)
+      .resize(800) // Resize to max width of 800px while maintaining aspect ratio
+      .jpeg({ quality: 80 }) // Convert to JPEG with 80% quality
+      .toFile(compressedFilePath)
+
+    // Delete original file
+    fs.unlinkSync(req.file.path)
+
+    // Return the URL for the compressed image
+    const imageUrl = '/uploads/' + compressedFilename
+    res.json({ 
+      success: true, 
+      imageUrl: imageUrl
+    })
+  } catch (error) {
+    console.error('Error processing image:', error)
+    res.status(500).json({ message: 'Error processing image' })
+  }
+})
 
 // --- Routes ---
 
@@ -366,6 +434,8 @@ app.get("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
       username: msg.userId.username,
       content: msg.content,
       timestamp: msg.timestamp,
+      messageType: msg.messageType || 'text',
+      imageUrl: msg.imageUrl,
       replyTo: msg.replyTo
         ? {
             _id: msg.replyTo._id.toString(),
@@ -382,14 +452,14 @@ app.get("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
   }
 })
 
-// Send message to a specific chat room (protected) - UPDATED WITH REPLY SUPPORT
+// Send message to a specific chat room (protected) - UPDATED WITH IMAGE AND REPLY SUPPORT
 app.post("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
   const { chatRoomId } = req.params
-  const { content, replyTo } = req.body
+  const { content, replyTo, messageType, imageUrl } = req.body
   const userId = req.session.userId
 
-  if (!content || content.trim() === "") {
-    return res.status(400).json({ message: "Message content cannot be empty." })
+  if ((!content || content.trim() === "") && !imageUrl) {
+    return res.status(400).json({ message: "Message content or image is required." })
   }
 
   try {
@@ -403,6 +473,8 @@ app.post("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
       chatRoomId,
       userId,
       content: content.trim(),
+      messageType: messageType || 'text',
+      imageUrl: imageUrl || null,
     }
 
     // Add replyTo if provided and valid
