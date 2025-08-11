@@ -164,30 +164,20 @@ const updateLastActive = async (req, res, next) => {
 }
 app.use(updateLastActive) // Apply this middleware to all routes after session
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'public/uploads/')
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, uniqueSuffix + path.extname(file.originalname))
-  }
-})
-
+// Configure multer for optimized image uploads
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(), // Store in memory for faster processing
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
-      cb(null, true)
+      cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed!'))
+      cb(new Error('Only image files are allowed!'));
     }
   }
-})
+});
 
 // Image upload and compression endpoint
 app.post('/api/upload-image', isAuthenticated, upload.single('image'), async (req, res) => {
@@ -196,14 +186,33 @@ app.post('/api/upload-image', isAuthenticated, upload.single('image'), async (re
       return res.status(400).json({ message: 'No image file uploaded' })
     }
 
-    // Compress image and convert to buffer
-    const compressedImageBuffer = await sharp(req.file.path)
-      .resize(800) // Resize to max width of 800px while maintaining aspect ratio
-      .jpeg({ quality: 80 }) // Convert to JPEG with 80% quality
-      .toBuffer()
-
-    // Delete original file
-    fs.unlinkSync(req.file.path)
+    // Get image dimensions
+    const metadata = await sharp(req.file.buffer).metadata();
+    
+    // Calculate resize dimensions to keep image under 200KB
+    let width = metadata.width;
+    let quality = 70;
+    
+    if (metadata.width > 1200) {
+      width = 1200;
+    } else if (metadata.width > 800) {
+      width = 800;
+    }
+    
+    // More aggressive compression for larger files
+    if (req.file.size > 1024 * 1024) { // If over 1MB
+      quality = 60;
+    }
+    
+    // Compress image directly from buffer with optimized settings
+    const compressedImageBuffer = await sharp(req.file.buffer)
+      .resize(width) // Resize based on original size
+      .jpeg({ 
+        quality: quality,
+        mozjpeg: true,
+        chromaSubsampling: '4:2:0' // More aggressive compression
+      })
+      .toBuffer();
 
     // Convert buffer to base64
     const base64Image = `data:image/jpeg;base64,${compressedImageBuffer.toString('base64')}`
