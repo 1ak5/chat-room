@@ -333,28 +333,106 @@ document.addEventListener("DOMContentLoaded", () => {
       contentP.textContent = msg.content
 
       if (msg.messageType === 'image' && msg.imageData) {
-        const imageContainer = document.createElement("div")
-        imageContainer.classList.add("message-image-container")
+        const imageContainer = document.createElement("div");
+        imageContainer.classList.add("message-image-container");
 
-        const image = document.createElement("img")
-        image.classList.add("message-image")
-        image.src = msg.imageData
-        image.alt = "Shared image"
-        image.loading = "lazy"
+        const image = document.createElement("img");
+        image.classList.add("message-image");
+        image.alt = "Shared image";
+        image.loading = "lazy";
+        
+        // Handle image loading states
+        const loadingSpinner = document.createElement("div");
+        loadingSpinner.classList.add("image-loading");
+        imageContainer.appendChild(loadingSpinner);
+        
+        // Use the image data
+        image.src = msg.imageData;
+        
+        // Remove loading spinner once image is loaded
+        image.onload = () => {
+          loadingSpinner.remove();
+          image.style.opacity = "1";
+        };
+        
+        // Handle image load error
+        image.onerror = () => {
+          loadingSpinner.remove();
+          image.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40NzcgMiAyIDYuNDc3IDIgMTJzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAxOGMtNC40MTEgMC04LTMuNTg5LTgtOHMzLjU4OS04IDgtOCA4IDMuNTg5IDggOC0zLjU4OSA4LTggOHptMC0xM2ExIDEgMCAxIDAgMCAyIDEgMSAwIDAgMCAwLTJ6bTAgNGExIDEgMCAwIDAtMSAxdjRhMSAxIDAgMSAwIDIgMHYtNGExIDEgMCAwIDAtMS0xeiIgZmlsbD0iI2ZmMDAwMCIvPjwvc3ZnPg=='; // Error icon
+          image.style.opacity = "0.5";
+        };
 
-        // Add click handler to open image in full size
+        // Add click handler for full-screen image view
         image.addEventListener('click', () => {
-          window.open(msg.imageUrl, '_blank')
-        })
+          if (msg.imageData && !msg.sendingStatus) {
+            // Create fullscreen overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'fullscreen-image-overlay';
+            
+            const fullImage = document.createElement('img');
+            fullImage.src = msg.imageData;
+            fullImage.className = 'fullscreen-image';
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'fullscreen-close-btn';
+            closeBtn.innerHTML = '×';
+            
+            overlay.appendChild(fullImage);
+            overlay.appendChild(closeBtn);
+            document.body.appendChild(overlay);
+            
+            // Handle close events
+            const closeOverlay = () => {
+              overlay.classList.add('closing');
+              setTimeout(() => {
+                document.body.removeChild(overlay);
+              }, 300);
+            };
+            
+            closeBtn.addEventListener('click', closeOverlay);
+            overlay.addEventListener('click', (e) => {
+              if (e.target === overlay) closeOverlay();
+            });
+            
+            // Prevent scrolling of background
+            document.body.style.overflow = 'hidden';
+            
+            overlay.addEventListener('transitionend', () => {
+              if (!overlay.classList.contains('closing')) {
+                overlay.classList.add('active');
+              }
+            });
+            
+            // Re-enable scrolling when overlay is removed
+            overlay.addEventListener('animationend', () => {
+              if (overlay.classList.contains('closing')) {
+                document.body.style.overflow = '';
+              }
+            });
+          }
+        });
 
-        imageContainer.appendChild(image)
-        messageBubble.appendChild(imageContainer)
+        imageContainer.appendChild(image);
+        messageBubble.appendChild(imageContainer);
       }
+
+      const statusContainer = document.createElement("div")
+      statusContainer.classList.add("message-status-container")
 
       const timestampSpan = document.createElement("div")
       timestampSpan.classList.add("message-timestamp")
       const date = new Date(msg.timestamp)
       timestampSpan.textContent = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      
+      // Add sending status for messages being sent
+      if (msg.sendingStatus === 'sending') {
+        const statusSpan = document.createElement("span")
+        statusSpan.classList.add("message-status")
+        statusSpan.textContent = "sending..."
+        statusContainer.appendChild(statusSpan)
+      }
+
+      statusContainer.appendChild(timestampSpan)
 
       const likeHeart = document.createElement("span")
       likeHeart.classList.add("like-heart")
@@ -362,8 +440,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
       messageBubble.appendChild(usernameSpan)
       messageBubble.appendChild(contentP)
-      messageBubble.appendChild(timestampSpan)
+      messageBubble.appendChild(statusContainer)
       messageBubble.appendChild(likeHeart)
+
+      // Update status to "sent" after a short delay
+      if (msg.sendingStatus === 'sending') {
+        setTimeout(() => {
+          const statusSpan = messageBubble.querySelector('.message-status');
+          if (statusSpan) {
+            statusSpan.textContent = "✓";
+            statusSpan.style.color = "#4CAF50";
+          }
+        }, 800)
+      }
 
       // Touch events for swipe-to-reply and double-tap-to-like
       let tapCount = 0
@@ -657,15 +746,27 @@ document.addEventListener("DOMContentLoaded", () => {
       sendButton.disabled = true
       sendButton.textContent = "Sending..."
 
+      // Prepare message data
       const messageData = {
         content: content || '📷 Image',
         replyTo: replyingTo ? replyingTo._id : null,
         messageType: 'text',
         imageData: null,
         contentType: null
-      }
+      };
 
+      let imageDataUrl = null;
+      
+      // If there's an image, process it first
       if (selectedImage) {
+        // Create temp preview using FileReader
+        const reader = new FileReader();
+        imageDataUrl = await new Promise((resolve) => {
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(selectedImage);
+        });
+        
+        // Create FormData for upload
         const formData = new FormData();
         formData.append('image', selectedImage);
         
@@ -692,14 +793,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
+      // Create temporary message for immediate display
       const tempMessage = {
         _id: `temp-${Date.now()}`,
         userId: currentUserId,
         username: currentUsername,
         content: messageData.content,
         messageType: messageData.messageType,
-        imageData: messageData.imageData,
+        // Use the temp preview URL first, then switch to compressed version when ready
+        imageData: imageDataUrl || messageData.imageData,
         timestamp: new Date().toISOString(),
+        sendingStatus: 'sending',
         replyTo: replyingTo
           ? {
               _id: replyingTo._id,
@@ -707,25 +811,51 @@ document.addEventListener("DOMContentLoaded", () => {
               content: replyingTo.content,
             }
           : null,
-      }
+      };
 
-      const optimisticMessageElement = createMessageBubbleElement(tempMessage)
-      optimisticMessageElement.dataset.tempId = tempMessage._id
-      messagesContainer.appendChild(optimisticMessageElement)
-      scrollToBottom()
-
+      // Clear input immediately for better UX
       messageInput.value = ""
       clearReply() // Clear reply after sending
       
-      // Reset image selection
+      // Reset image selection if any
       if (selectedImage) {
         selectedImage = null;
         const imageUpload = document.getElementById('image-upload');
         imageUpload.value = '';
         messageInput.placeholder = 'Type your message...';
       }
+
+      // Add message to UI immediately with sending status
+      const optimisticMessageElement = createMessageBubbleElement(tempMessage);
+      optimisticMessageElement.dataset.tempId = tempMessage._id;
+      optimisticMessageElement.classList.add('sending');
       
-      messageInput.focus()
+      // Add loading dots for text messages
+      const statusContainer = optimisticMessageElement.querySelector('.message-status-container');
+      const loadingStatus = document.createElement('div');
+      loadingStatus.classList.add('message-status');
+      
+      const loadingDots = document.createElement('div');
+      loadingDots.classList.add('loading-dots');
+      loadingDots.innerHTML = '<span></span><span></span><span></span>';
+      
+      loadingStatus.appendChild(loadingDots);
+      statusContainer.insertBefore(loadingStatus, statusContainer.firstChild);
+
+      // For images, add loading spinner
+      if (messageData.messageType === 'image') {
+        const imageContainer = optimisticMessageElement.querySelector('.message-image-container');
+        if (imageContainer) {
+          const loadingSpinner = document.createElement('div');
+          loadingSpinner.classList.add('image-loading');
+          imageContainer.appendChild(loadingSpinner);
+        }
+      }
+
+      messagesContainer.appendChild(optimisticMessageElement);
+      scrollToBottom();
+      
+      messageInput.focus();
 
       try {
         const response = await fetch(`/api/messages/${currentChatRoomId}`, {
@@ -742,20 +872,58 @@ document.addEventListener("DOMContentLoaded", () => {
           throw new Error("Failed to send message")
         }
 
-        // Remove the temporary message since real message will come via polling
+        // Update temporary message to show it's been sent
         const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempMessage._id}"]`)
         if (tempBubble) {
-          tempBubble.remove()
+          tempBubble.classList.remove('sending');
+          
+          // Remove loading dots
+          const loadingStatus = tempBubble.querySelector('.loading-dots')?.parentElement;
+          if (loadingStatus) {
+            const checkmark = document.createElement('span');
+            checkmark.textContent = '✓';
+            checkmark.style.color = '#4CAF50';
+            loadingStatus.replaceWith(checkmark);
+          }
+
+          // Remove image loading spinner if present
+          const loadingSpinner = tempBubble.querySelector('.image-loading');
+          if (loadingSpinner) {
+            loadingSpinner.remove();
+          }
+
+          // Keep the message visible for a moment before it gets replaced by the real one
+          setTimeout(() => {
+            tempBubble.remove();
+          }, 500);
         }
       } catch (error) {
-        console.error("Error sending message:", error)
-        const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempMessage._id}"]`)
+        console.error("Error sending message:", error);
+        const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempMessage._id}"]`);
         if (tempBubble) {
-          tempBubble.remove()
+          tempBubble.classList.remove('sending');
+          
+          // Show error state
+          const loadingStatus = tempBubble.querySelector('.loading-dots')?.parentElement;
+          if (loadingStatus) {
+            loadingStatus.textContent = '❌ Failed to send';
+            loadingStatus.style.color = 'var(--red-error)';
+          }
+
+          // Remove image loading spinner if present
+          const loadingSpinner = tempBubble.querySelector('.image-loading');
+          if (loadingSpinner) {
+            loadingSpinner.remove();
+          }
+
+          // Remove after showing error
+          setTimeout(() => {
+            tempBubble.remove();
+          }, 3000);
         }
       } finally {
-        sendButton.disabled = false
-        sendButton.textContent = "Send"
+        sendButton.disabled = false;
+        sendButton.textContent = "Send";
       }
     })
 
