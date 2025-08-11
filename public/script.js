@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
+  let selectedImage = null;
+
   // Common helper functions
   const displayMessage = (element, message, isError = true) => {
     if (element) {
@@ -330,6 +332,25 @@ document.addEventListener("DOMContentLoaded", () => {
       contentP.classList.add("message-content")
       contentP.textContent = msg.content
 
+      if (msg.messageType === 'image' && msg.imageUrl) {
+        const imageContainer = document.createElement("div")
+        imageContainer.classList.add("message-image-container")
+
+        const image = document.createElement("img")
+        image.classList.add("message-image")
+        image.src = msg.imageUrl
+        image.alt = "Shared image"
+        image.loading = "lazy"
+
+        // Add click handler to open image in full size
+        image.addEventListener('click', () => {
+          window.open(msg.imageUrl, '_blank')
+        })
+
+        imageContainer.appendChild(image)
+        messageBubble.appendChild(imageContainer)
+      }
+
       const timestampSpan = document.createElement("div")
       timestampSpan.classList.add("message-timestamp")
       const date = new Date(msg.timestamp)
@@ -587,17 +608,70 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    // Image upload handler
+    const imageUpload = document.getElementById('image-upload');
+    const handleImageSelect = async (file) => {
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+          alert('Image size should be less than 5MB');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+          const response = await fetch('/api/upload-image', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error('Image upload failed');
+          }
+
+          const data = await response.json();
+          return data.imageUrl;
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          alert('Failed to upload image. Please try again.');
+          return null;
+        }
+      }
+      return null;
+    };
+
+    imageUpload.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        selectedImage = file;
+        messageInput.placeholder = 'Add a caption (optional)...';
+      }
+    });
+
     messageForm.addEventListener("submit", async (e) => {
       e.preventDefault()
       const content = messageInput.value.trim()
-      if (!content || !currentChatRoomId) return
+      if ((!content && !selectedImage) || !currentChatRoomId) return
 
       sendButton.disabled = true
       sendButton.textContent = "Sending..."
 
+      let imageUrl = null;
+      if (selectedImage) {
+        imageUrl = await handleImageSelect(selectedImage);
+        if (!imageUrl) {
+          sendButton.disabled = false;
+          sendButton.textContent = "Send";
+          return;
+        }
+      }
+
       const messageData = {
-        content: content,
+        content: content || (imageUrl ? '📷 Image' : ''),
         replyTo: replyingTo ? replyingTo._id : null,
+        messageType: imageUrl ? 'image' : 'text',
+        imageUrl: imageUrl
       }
 
       const tempMessage = {
@@ -622,6 +696,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       messageInput.value = ""
       clearReply() // Clear reply after sending
+      
+      // Reset image selection
+      if (selectedImage) {
+        selectedImage = null;
+        const imageUpload = document.getElementById('image-upload');
+        imageUpload.value = '';
+        messageInput.placeholder = 'Type your message...';
+      }
+      
       messageInput.focus()
 
       try {
