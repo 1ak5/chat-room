@@ -100,9 +100,9 @@ const MessageSchema = new mongoose.Schema(
       enum: ['text', 'image'],
       default: 'text'
     },
-    imageUrl: {
-      type: String,
-      default: null
+    image: {
+      data: Buffer,
+      contentType: String,
     },
     replyTo: {
       type: mongoose.Schema.Types.ObjectId,
@@ -196,23 +196,22 @@ app.post('/api/upload-image', isAuthenticated, upload.single('image'), async (re
       return res.status(400).json({ message: 'No image file uploaded' })
     }
 
-    const compressedFilename = 'compressed-' + req.file.filename
-    const compressedFilePath = path.join('public/uploads', compressedFilename)
-
-    // Compress image
-    await sharp(req.file.path)
+    // Compress image and convert to buffer
+    const compressedImageBuffer = await sharp(req.file.path)
       .resize(800) // Resize to max width of 800px while maintaining aspect ratio
       .jpeg({ quality: 80 }) // Convert to JPEG with 80% quality
-      .toFile(compressedFilePath)
+      .toBuffer()
 
     // Delete original file
     fs.unlinkSync(req.file.path)
 
-    // Return the URL for the compressed image
-    const imageUrl = '/uploads/' + compressedFilename
+    // Convert buffer to base64
+    const base64Image = `data:image/jpeg;base64,${compressedImageBuffer.toString('base64')}`
+
     res.json({ 
       success: true, 
-      imageUrl: imageUrl
+      imageData: base64Image,
+      contentType: 'image/jpeg'
     })
   } catch (error) {
     console.error('Error processing image:', error)
@@ -427,23 +426,31 @@ app.get("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
       .sort({ timestamp: 1 })
       .lean()
 
-    const messagesFormatted = messages.map((msg) => ({
-      _id: msg._id.toString(),
-      chatRoomId: msg.chatRoomId.toString(),
-      userId: msg.userId._id.toString(),
-      username: msg.userId.username,
-      content: msg.content,
-      timestamp: msg.timestamp,
-      messageType: msg.messageType || 'text',
-      imageUrl: msg.imageUrl,
-      replyTo: msg.replyTo
-        ? {
-            _id: msg.replyTo._id.toString(),
-            username: msg.replyTo.userId.username,
-            content: msg.replyTo.content,
-          }
-        : null,
-    }))
+    const messagesFormatted = messages.map((msg) => {
+      const formattedMsg = {
+        _id: msg._id.toString(),
+        chatRoomId: msg.chatRoomId.toString(),
+        userId: msg.userId._id.toString(),
+        username: msg.userId.username,
+        content: msg.content,
+        timestamp: msg.timestamp,
+        messageType: msg.messageType || 'text',
+        replyTo: msg.replyTo
+          ? {
+              _id: msg.replyTo._id.toString(),
+              username: msg.replyTo.userId.username,
+              content: msg.replyTo.content,
+            }
+          : null,
+      };
+
+      // If message has image, convert buffer to base64
+      if (msg.image && msg.image.data) {
+        formattedMsg.imageData = `data:${msg.image.contentType};base64,${msg.image.data.toString('base64')}`;
+      }
+
+      return formattedMsg;
+    })
 
     res.status(200).json({ messages: messagesFormatted })
   } catch (error) {
@@ -455,10 +462,10 @@ app.get("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
 // Send message to a specific chat room (protected) - UPDATED WITH IMAGE AND REPLY SUPPORT
 app.post("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
   const { chatRoomId } = req.params
-  const { content, replyTo, messageType, imageUrl } = req.body
+  const { content, replyTo, messageType, imageData, contentType } = req.body
   const userId = req.session.userId
 
-  if ((!content || content.trim() === "") && !imageUrl) {
+  if ((!content || content.trim() === "") && !imageData) {
     return res.status(400).json({ message: "Message content or image is required." })
   }
 
@@ -474,7 +481,19 @@ app.post("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
       userId,
       content: content.trim(),
       messageType: messageType || 'text',
-      imageUrl: imageUrl || null,
+    }
+
+    // If image data is present, store it in the message
+    if (imageData && contentType) {
+      // Convert base64 to buffer
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      messageData.image = {
+        data: buffer,
+        contentType: contentType
+      }
+      messageData.messageType = 'image';
     }
 
     // Add replyTo if provided and valid
