@@ -11,6 +11,21 @@ const fs = require("fs")
 const app = express()
 const PORT = process.env.PORT || 3000
 
+// Configure multer for optimized image uploads
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true)
+    } else {
+      cb(new Error('Only image files are allowed!'))
+    }
+  }
+})
+
 // --- MongoDB Connection ---
 const MONGODB_URI = process.env.MONGODB_URI
 
@@ -165,8 +180,9 @@ const updateLastActive = async (req, res, next) => {
 app.use(updateLastActive) // Apply this middleware to all routes after session
 
 // Configure multer for optimized image uploads
+const storage = multer.memoryStorage();
 const upload = multer({
-  storage: multer.memoryStorage(), // Store in memory for faster processing
+  storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
@@ -179,54 +195,68 @@ const upload = multer({
   }
 });
 
-// Image upload and compression endpoint
-app.post('/api/upload-image', isAuthenticated, upload.single('image'), async (req, res) => {
+// Image upload and processing endpoint
+app.post('/api/upload-image', isAuthenticated, imageUpload.single('image'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No image file uploaded' });
+  }
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No image file uploaded' })
+    let processedBuffer;
+    
+    // Check if image is already small enough (under 200KB)
+    if (req.file.size <= 200 * 1024) {
+      processedBuffer = req.file.buffer;
+    } else {
+      const pipeline = sharp(req.file.buffer);
+      const metadata = await pipeline.metadata();
+      
+      // Determine optimal compression settings
+      let width = metadata.width;
+      let quality = 80;
+      
+      if (req.file.size > 2 * 1024 * 1024) { // > 2MB
+        width = Math.min(metadata.width, 1024);
+        quality = 60;
+      } else if (req.file.size > 1024 * 1024) { // > 1MB
+        width = Math.min(metadata.width, 1200);
+        quality = 70;
+      } else if (req.file.size > 500 * 1024) { // > 500KB
+        width = Math.min(metadata.width, 1500);
+        quality = 75;
+      }
+      
+      // Fast compression pipeline
+      processedBuffer = await pipeline
+        .resize(width, null, { 
+          fastShrinkOnLoad: true,
+          kernel: sharp.kernel.nearest // Faster resizing
+        })
+        .jpeg({ 
+          quality,
+          mozjpeg: true,
+          optimizeScans: true,
+          chromaSubsampling: '4:2:0',
+          trellisQuantisation: true,
+          overshootDeringing: true,
+          optimizeCoding: true,
+          quantisationTable: 3
+        })
+        .toBuffer();
     }
 
-    // Get image dimensions
-    const metadata = await sharp(req.file.buffer).metadata();
-    
-    // Calculate resize dimensions to keep image under 200KB
-    let width = metadata.width;
-    let quality = 70;
-    
-    if (metadata.width > 1200) {
-      width = 1200;
-    } else if (metadata.width > 800) {
-      width = 800;
-    }
-    
-    // More aggressive compression for larger files
-    if (req.file.size > 1024 * 1024) { // If over 1MB
-      quality = 60;
-    }
-    
-    // Compress image directly from buffer with optimized settings
-    const compressedImageBuffer = await sharp(req.file.buffer)
-      .resize(width) // Resize based on original size
-      .jpeg({ 
-        quality: quality,
-        mozjpeg: true,
-        chromaSubsampling: '4:2:0' // More aggressive compression
-      })
-      .toBuffer();
-
-    // Convert buffer to base64
-    const base64Image = `data:image/jpeg;base64,${compressedImageBuffer.toString('base64')}`
-
-    res.json({ 
+    // Convert to base64 and send response immediately
+    const base64Image = `data:image/jpeg;base64,${processedBuffer.toString('base64')}`;
+    return res.json({ 
       success: true, 
       imageData: base64Image,
       contentType: 'image/jpeg'
-    })
+    });
   } catch (error) {
-    console.error('Error processing image:', error)
-    res.status(500).json({ message: 'Error processing image' })
+    console.error('Error processing image:', error);
+    return res.status(500).json({ message: 'Error processing image' });
   }
-})
+});
 
 // --- Routes ---
 
