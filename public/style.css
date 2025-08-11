@@ -1,6 +1,6 @@
 /* General Styles */
 :root {
-  --primary-color: #6b46c1;
+  --primary-color:#6b46c1;
   --secondary-color: #805ad5;
   --accent-color: #d6bcfa;
   --text-color: #333;
@@ -12,6 +12,93 @@
   --red-error: #ef4444;
   --reply-bg: #f0f4f8;
   --reply-border: #cbd5e0;
+}
+.message-status-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--light-text-color);
+  margin-top: 2px;
+}
+
+.message-status {
+  font-size: 0.7rem;
+  color: var(--light-text-color);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.message-status .loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.message-status .loading-dots span {
+  width: 3px;
+  height: 3px;
+  background-color: var(--light-text-color);
+  border-radius: 50%;
+  animation: loadingDots 1.4s infinite;
+}
+
+.message-status .loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.message-status .loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes loadingDots {
+  0%, 100% {
+    transform: scale(0.5);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.message.sending {
+  opacity: 0.8;
+}
+
+.message.sending .message-content {
+  position: relative;
+}
+
+.message.sending .message-image {
+  filter: brightness(0.9);
+}
+
+/* Message image styles */
+.message-image {
+  max-width: 300px;
+  position: relative;
+}
+
+.image-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 
 html,
@@ -46,17 +133,132 @@ body {
 }
 
 /* Message image styles */
+.message-image-container {
+  position: relative;
+  min-width: 200px;
+  min-height: 150px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
 .message-image {
   max-width: 300px;
   max-height: 300px;
   border-radius: 8px;
-  margin-top: 8px;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all 0.3s ease;
+  opacity: 0;
+}
+
+.message-image.loaded {
+  opacity: 1;
 }
 
 .message-image:hover {
   transform: scale(1.05);
+}
+
+.message.sending .message-image {
+  filter: brightness(0.9);
+}
+
+.image-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(107, 70, 193, 0.2);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s linear infinite;
+  z-index: 1;
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Fullscreen image overlay styles */
+.fullscreen-image-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  padding: 20px;
+  touch-action: none; /* Prevents default touch behaviors */
+}
+
+.fullscreen-image-overlay.active {
+  opacity: 1;
+}
+
+.fullscreen-image-overlay.closing {
+  opacity: 0;
+}
+
+.fullscreen-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.fullscreen-image-overlay.active .fullscreen-image {
+  transform: scale(1);
+}
+
+.fullscreen-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+  z-index: 10000;
+}
+
+.fullscreen-close-btn:hover,
+.fullscreen-close-btn:focus {
+  background: rgba(255, 255, 255, 0.3);
+  outline: none;
+}
+
+/* Add smooth animation for opening/closing */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* Image preview styles */
