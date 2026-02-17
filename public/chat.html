@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body class="chat-body">
+    <div class="chat-container">
+        <header class="chat-header">
+            <h1 id="chat-room-name">Loading Chat...</h1>
+            <div id="online-users-list" class="online-users-list"></div>
+            <div class="header-buttons">
+                <button id="leave-chat-button" class="leave-chat-button">Leave Chat</button>
+                <button id="logout-button" class="logout-button">Logout</button>
+            </div>
+        </header>
+        <main class="chat-main">
+            <div id="messages-container" class="messages-container"></div>
+            <button id="scroll-lock-toggle-btn" class="scroll-lock-toggle-btn">↑</button>
+        </main>
+        <footer class="chat-footer">
+            <!-- Reply preview section -->
+            <div id="reply-preview" class="reply-preview" style="display: none;">
+                <div class="reply-content">
+                    <div class="reply-header">
+                        <span class="reply-to">Replying to <strong id="reply-username"></strong></span>
+                        <button id="cancel-reply" class="cancel-reply">✕</button>
+                    </div>
+                    <div id="reply-message" class="reply-message"></div>
+                </div>
+            </div>
+            <form id="message-form" class="message-form">
+                <label for="image-upload" class="image-upload-label">📷</label>
+                <input type="file" id="image-upload" accept="image/*" style="display: none;">
+                <input type="text" id="message-input" placeholder="Type your message..." required>
+                <button type="submit" id="send-button" class="send-button">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                    </svg>
+                </button>
+            </form>
+        </footer>
+    </div>
+    <button id="scroll-to-bottom-btn" class="scroll-to-bottom-btn">↓</button>
+    <script src="/script.js"></script>
+</body>
+
+</html>

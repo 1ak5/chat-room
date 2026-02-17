@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Rooms - Chat App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1 class="auth-title">Chat Rooms</h1>
+            <p id="current-username-display" class="auth-description"></p> <!-- Username display area -->
+            <p class="auth-description">Create a new chat or join an existing one.</p>
+
+            <div class="tab-container">
+                <button class="tab-button active" data-tab="create">Create New Chat</button>
+                <button class="tab-button" data-tab="join">Join Existing Chat</button>
+            </div>
+
+            <form id="create-chat-form" class="auth-form tab-content active">
+                <div class="form-group">
+                    <label for="create-chat-name">Chat Name</label>
+                    <input type="text" id="create-chat-name" name="name" placeholder="Enter chat name" required>
+                </div>
+                <div class="form-group">
+                    <label for="create-chat-pin">PIN</label>
+                    <input type="password" id="create-chat-pin" name="pin" placeholder="Set a PIN for the chat"
+                        required>
+                </div>
+                <p id="create-error-message" class="error-message"></p>
+                <button type="submit" id="create-chat-button" class="auth-button">Create & Join Chat</button>
+            </form>
+
+            <form id="join-chat-form" class="auth-form tab-content">
+                <div class="form-group">
+                    <label for="join-chat-name">Chat Name</label>
+                    <input type="text" id="join-chat-name" name="name" placeholder="Enter chat name" required>
+                </div>
+                <div class="form-group">
+                    <label for="join-chat-pin">PIN</label>
+                    <input type="password" id="join-chat-pin" name="pin" placeholder="Enter chat PIN" required>
+                </div>
+                <p id="join-error-message" class="error-message"></p>
+                <button type="submit" id="join-chat-button" class="auth-button">Join Chat</button>
+            </form>
+
+            <div class="auth-switch">
+                <button id="logout-button" class="switch-button">Logout</button>
+            </div>
+        </div>
+    </div>
+    <script src="/script.js"></script>
+</body>
+
+</html>
