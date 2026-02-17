@@ -212,43 +212,29 @@ app.post('/api/upload-image', isAuthenticated, imageUpload.single('image'), asyn
   try {
     let processedBuffer;
 
-    // Check if image is already small enough (under 200KB)
-    if (req.file.size <= 200 * 1024) {
+    // Check if image is already very small (under 50KB)
+    if (req.file.size <= 50 * 1024) {
       processedBuffer = req.file.buffer;
     } else {
       const pipeline = sharp(req.file.buffer);
       const metadata = await pipeline.metadata();
 
-      // Determine optimal compression settings
-      let width = metadata.width;
-      let quality = 80;
+      // Aggressive compression for fast sending
+      // Max width 800px, quality 50
+      const width = Math.min(metadata.width, 800);
 
-      if (req.file.size > 2 * 1024 * 1024) { // > 2MB
-        width = Math.min(metadata.width, 1024);
-        quality = 60;
-      } else if (req.file.size > 1024 * 1024) { // > 1MB
-        width = Math.min(metadata.width, 1200);
-        quality = 70;
-      } else if (req.file.size > 500 * 1024) { // > 500KB
-        width = Math.min(metadata.width, 1500);
-        quality = 75;
-      }
-
-      // Fast compression pipeline
       processedBuffer = await pipeline
         .resize(width, null, {
-          fastShrinkOnLoad: true,
-          kernel: sharp.kernel.nearest // Faster resizing
+          fit: 'inside',
+          withoutEnlargement: true
         })
         .jpeg({
-          quality,
-          mozjpeg: true,
+          quality: 50,
+          mozjpeg: true, // Use Mozilla JPEG encoder for better compression
           optimizeScans: true,
           chromaSubsampling: '4:2:0',
           trellisQuantisation: true,
-          overshootDeringing: true,
-          optimizeCoding: true,
-          quantisationTable: 3
+          overshootDeringing: true
         })
         .toBuffer();
     }

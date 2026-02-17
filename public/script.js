@@ -317,7 +317,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const messageInput = document.getElementById("message-input")
     const sendButton = document.getElementById("send-button")
     const scrollToBottomBtn = document.getElementById("scroll-to-bottom-btn")
-    const scrollLockToggleBtn = document.getElementById("scroll-lock-toggle-btn")
     const replyPreview = document.getElementById("reply-preview")
     const replyUsername = document.getElementById("reply-username")
     const replyMessage = document.getElementById("reply-message")
@@ -327,7 +326,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentUsername = ""
     let currentChatRoomId = null
     let messagesCache = []
-    let isScrollLocked = true
     let replyingTo = null // Store the message being replied to
 
     const createMessageBubbleElement = (msg) => {
@@ -395,16 +393,15 @@ document.addEventListener("DOMContentLoaded", () => {
         // Use the image data
         image.src = msg.imageData;
 
-        // Remove loading spinner once image is loaded
+        // Show image immediately — remove spinner when loaded
         image.onload = () => {
           loadingSpinner.remove();
-          image.style.opacity = "1";
         };
 
         // Handle image load error
         image.onerror = () => {
           loadingSpinner.remove();
-          image.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40NzcgMiAyIDYuNDc3IDIgMTJzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAxOGMtNC40MTEgMC04LTMuNTg5LTgtOHMzLjU4OS04IDgtOCA4IDMuNTg5IDggOC0zLjU4OSA4LTggOHptMC0xM2ExIDEgMCAxIDAgMCAyIDEgMSAwIDAgMCAwLTJ6bTAgNGExIDEgMCAwIDAtMSAxdjRhMSAxIDAgMSAwIDIgMHYtNGExIDEgMCAwIDAtMS0xeiIgZmlsbD0iI2ZmMDAwMCIvPjwvc3ZnPg=='; // Error icon
+          image.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40NzcgMiAyIDYuNDc3IDIgMTJzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAxOGMtNC40MTEgMC04LTMuNTg5LTgtOHMzLjU4OS04IDgtOCA4IDMuNTg5IDggOC0zLjU4OSA0LTggOHptMC0xM2ExIDEgMCAxIDAgMCAyIDEgMSAwIDAgMCAwLTJ6bTAgNGExIDEgMCAwIDAtMSAxdjRhMSAxIDAgMSAwIDIgMHYtNGExIDEgMCAwIDAtMS0xeiIgZmlsbD0iI2ZmMDAwMCIvPjwvc3ZnPg=='; // Error icon
           image.style.opacity = "0.5";
         };
 
@@ -669,28 +666,13 @@ document.addEventListener("DOMContentLoaded", () => {
       messagesContainer.scrollTop = messagesContainer.scrollHeight
     }
 
-    const toggleScrollLock = () => {
-      isScrollLocked = !isScrollLocked
-      if (isScrollLocked) {
-        messagesContainer.style.overflowY = "hidden"
-        scrollLockToggleBtn.textContent = "↑"
-        scrollToBottom()
-      } else {
-        messagesContainer.style.overflowY = "auto"
-        scrollLockToggleBtn.textContent = "↓"
-      }
-      scrollToBottomBtn.style.display = isScrollLocked ? "none" : "flex"
-    }
-
     const renderMessages = (messages) => {
       const wasAtBottom =
         messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 50
       const previousMessageCount = messagesCache.length
 
       if (JSON.stringify(messagesCache) === JSON.stringify(messages)) {
-        if (!isScrollLocked) {
-          toggleScrollButton()
-        }
+        toggleScrollButton()
         return
       }
 
@@ -704,9 +686,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (messages.length === 0 && savedTempBubbles.length === 0) {
         messagesContainer.innerHTML =
           '<div style="text-align: center; color: #666; padding: 40px;">No messages yet. Start the conversation!</div>'
-        if (!isScrollLocked) {
-          toggleScrollButton()
-        }
+        toggleScrollButton()
         return
       }
 
@@ -718,15 +698,13 @@ document.addEventListener("DOMContentLoaded", () => {
       // Re-append any temp bubbles that are still pending
       savedTempBubbles.forEach(el => messagesContainer.appendChild(el))
 
-      if (isScrollLocked || wasAtBottom || messages.length > previousMessageCount || previousMessageCount === 0) {
+      if (wasAtBottom || messages.length > previousMessageCount || previousMessageCount === 0) {
         setTimeout(() => {
           scrollToBottom()
         }, 50)
       }
 
-      if (!isScrollLocked) {
-        toggleScrollButton()
-      }
+      toggleScrollButton()
     }
 
     const fetchMessages = async () => {
@@ -800,7 +778,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         chatRoomNameHeader.textContent = data.currentChatRoomName || "Chat Room"
 
-        toggleScrollLock()
+        // Auto-scroll to bottom on load
+        scrollToBottom()
       } catch (error) {
         console.error("Error fetching current user/chat room:", error)
         chatRoomNameHeader.textContent = "Error Loading Chat"
@@ -1121,24 +1100,17 @@ document.addEventListener("DOMContentLoaded", () => {
     })
 
     const toggleScrollButton = () => {
-      if (!isScrollLocked) {
-        const isAtBottom =
-          messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20
-        if (isAtBottom) {
-          scrollToBottomBtn.classList.remove("visible")
-        } else {
-          scrollToBottomBtn.classList.add("visible")
-        }
+      const isAtBottom =
+        messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 20
+      if (isAtBottom) {
+        scrollToBottomBtn.classList.remove("visible")
+      } else {
+        scrollToBottomBtn.classList.add("visible")
       }
     }
 
-    messagesContainer.addEventListener("scroll", () => {
-      if (!isScrollLocked) {
-        toggleScrollButton()
-      }
-    })
+    messagesContainer.addEventListener("scroll", toggleScrollButton)
     scrollToBottomBtn.addEventListener("click", scrollToBottom)
-    scrollLockToggleBtn.addEventListener("click", toggleScrollLock)
 
     // Initialize chat
     fetchCurrentUserAndChatRoom().then(() => {

@@ -155,12 +155,9 @@ body {
   max-height: 300px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  opacity: 0;
-}
-
-.message-image.loaded {
+  transition: transform 0.3s ease;
   opacity: 1;
+  display: block;
 }
 
 .message-bubble:hover {
@@ -651,9 +648,8 @@ h3,
   /* Reduced from 12px for denser chat */
   padding-bottom: 10px;
   flex-grow: 1;
-  padding-top: 50px;
+  padding-top: 10px;
 
-  /* Reduced from 60px */
   /* Hide scrollbar for Chrome, Safari and Opera */
   &::-webkit-scrollbar {
     display: none;
@@ -664,37 +660,6 @@ h3,
   /* IE and Edge */
   scrollbar-width: none;
   /* Firefox */
-}
-
-.scroll-lock-toggle-btn {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-color);
-  color: var(--primary-color);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  /* Added subtle border */
-  border-radius: 50%;
-  width: 40px;
-  /* Slightly smaller */
-  height: 40px;
-  font-size: 1.1em;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-  /* Much smaller shadow */
-  transition: all 0.3s ease;
-  z-index: 10;
-}
-
-.scroll-lock-toggle-btn:hover {
-  background-color: var(--white);
-  color: var(--secondary-color);
-  transform: translateX(-50%) translateY(-2px);
-  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .message-bubble {
@@ -1139,19 +1104,7 @@ h3,
     font-size: 1.3em;
   }
 
-  .scroll-lock-toggle-btn {
-    position: fixed;
-    top: auto;
-    bottom: calc(130px + env(safe-area-inset-bottom));
-    right: 15px;
-    left: auto;
-    transform: none;
-    width: 45px;
-    height: 45px;
-    font-size: 1.3em;
-    background: var(--white);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-  }
+
 }
 
 /* Context Menu for Messages */
