@@ -1130,6 +1130,28 @@ h3,
   .messages-container {
     padding-top: 10px;
   }
+
+  .scroll-to-bottom-btn {
+    bottom: calc(75px + env(safe-area-inset-bottom));
+    right: 15px;
+    width: 45px;
+    height: 45px;
+    font-size: 1.3em;
+  }
+
+  .scroll-lock-toggle-btn {
+    position: fixed;
+    top: auto;
+    bottom: calc(130px + env(safe-area-inset-bottom));
+    right: 15px;
+    left: auto;
+    transform: none;
+    width: 45px;
+    height: 45px;
+    font-size: 1.3em;
+    background: var(--white);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
 }
 
 /* Context Menu for Messages */

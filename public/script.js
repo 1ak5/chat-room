@@ -696,8 +696,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       messagesCache = messages
 
+      // Save any temp (optimistic) bubbles before clearing
+      const tempBubbles = messagesContainer.querySelectorAll('[data-temp-id]')
+      const savedTempBubbles = Array.from(tempBubbles).map(el => el.cloneNode(true))
+
       messagesContainer.innerHTML = ""
-      if (messages.length === 0) {
+      if (messages.length === 0 && savedTempBubbles.length === 0) {
         messagesContainer.innerHTML =
           '<div style="text-align: center; color: #666; padding: 40px;">No messages yet. Start the conversation!</div>'
         if (!isScrollLocked) {
@@ -710,6 +714,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const messageElement = createMessageBubbleElement(msg)
         messagesContainer.appendChild(messageElement)
       })
+
+      // Re-append any temp bubbles that are still pending
+      savedTempBubbles.forEach(el => messagesContainer.appendChild(el))
 
       if (isScrollLocked || wasAtBottom || messages.length > previousMessageCount || previousMessageCount === 0) {
         setTimeout(() => {
@@ -875,14 +882,7 @@ document.addEventListener("DOMContentLoaded", () => {
       scrollToBottom();
     });
 
-    // Tapping on messages area restores header (user scrolled away from keyboard)
-    messagesContainer.addEventListener('touchstart', () => {
-      if (chatContainer.classList.contains('is-typing')) {
-        // Blur the input to close keyboard
-        messageInput.blur();
-        chatContainer.classList.remove('is-typing');
-      }
-    }, { passive: true });
+    // Keyboard stays open while scrolling — user can scroll messages without losing keyboard
 
     messageForm.addEventListener("submit", async (e) => {
       e.preventDefault()
@@ -1026,7 +1026,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const loadingSpinner = tempBubble.querySelector('.image-loading')
             if (loadingSpinner) loadingSpinner.remove()
 
-            setTimeout(() => { tempBubble.remove() }, 500)
+            // Don't remove temp bubble immediately — let the next fetchMessages re-render handle it
+            // This prevents the image from vanishing between send and server poll
           }
         } catch (error) {
           console.error("Error sending message:", error)
