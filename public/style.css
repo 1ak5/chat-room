@@ -322,6 +322,8 @@ body {
   min-height: 100vh;
   background-color: var(--bg-color);
   margin: 0;
+  overscroll-behavior: none;
+  /* Prevents mobile browser bounce */
 }
 
 h1,
