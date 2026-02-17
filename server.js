@@ -82,6 +82,10 @@ const ChatRoomSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     participants: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -123,6 +127,10 @@ const MessageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
       default: null,
+    },
+    isStarred: {
+      type: Boolean,
+      default: false,
     },
     timestamp: {
       type: Date,
@@ -203,18 +211,18 @@ app.post('/api/upload-image', isAuthenticated, imageUpload.single('image'), asyn
 
   try {
     let processedBuffer;
-    
+
     // Check if image is already small enough (under 200KB)
     if (req.file.size <= 200 * 1024) {
       processedBuffer = req.file.buffer;
     } else {
       const pipeline = sharp(req.file.buffer);
       const metadata = await pipeline.metadata();
-      
+
       // Determine optimal compression settings
       let width = metadata.width;
       let quality = 80;
-      
+
       if (req.file.size > 2 * 1024 * 1024) { // > 2MB
         width = Math.min(metadata.width, 1024);
         quality = 60;
@@ -225,14 +233,14 @@ app.post('/api/upload-image', isAuthenticated, imageUpload.single('image'), asyn
         width = Math.min(metadata.width, 1500);
         quality = 75;
       }
-      
+
       // Fast compression pipeline
       processedBuffer = await pipeline
-        .resize(width, null, { 
+        .resize(width, null, {
           fastShrinkOnLoad: true,
           kernel: sharp.kernel.nearest // Faster resizing
         })
-        .jpeg({ 
+        .jpeg({
           quality,
           mozjpeg: true,
           optimizeScans: true,
@@ -247,8 +255,8 @@ app.post('/api/upload-image', isAuthenticated, imageUpload.single('image'), asyn
 
     // Convert to base64 and send response immediately
     const base64Image = `data:image/jpeg;base64,${processedBuffer.toString('base64')}`;
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       imageData: base64Image,
       contentType: 'image/jpeg'
     });
@@ -380,7 +388,7 @@ app.post("/api/chatrooms/create", isAuthenticated, async (req, res) => {
     }
 
     const hashedPin = await bcrypt.hash(pin, 10)
-    const newRoom = new ChatRoom({ name, hashedPin, participants: [userId] })
+    const newRoom = new ChatRoom({ name, hashedPin, createdBy: userId, participants: [userId] })
     await newRoom.save()
 
     req.session.currentChatRoomId = newRoom._id.toString()
@@ -476,10 +484,10 @@ app.get("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
         messageType: msg.messageType || 'text',
         replyTo: msg.replyTo
           ? {
-              _id: msg.replyTo._id.toString(),
-              username: msg.replyTo.userId.username,
-              content: msg.replyTo.content,
-            }
+            _id: msg.replyTo._id.toString(),
+            username: msg.replyTo.userId.username,
+            content: msg.replyTo.content,
+          }
           : null,
       };
 
@@ -527,7 +535,7 @@ app.post("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
       // Convert base64 to buffer
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
       const buffer = Buffer.from(base64Data, 'base64');
-      
+
       messageData.image = {
         data: buffer,
         contentType: contentType
@@ -567,10 +575,10 @@ app.post("/api/messages/:chatRoomId", isAuthenticated, async (req, res) => {
       timestamp: populatedMessage.timestamp,
       replyTo: populatedMessage.replyTo
         ? {
-            _id: populatedMessage.replyTo._id.toString(),
-            username: populatedMessage.replyTo.userId.username,
-            content: populatedMessage.replyTo.content,
-          }
+          _id: populatedMessage.replyTo._id.toString(),
+          username: populatedMessage.replyTo.userId.username,
+          content: populatedMessage.replyTo.content,
+        }
         : null,
     }
 
@@ -639,6 +647,49 @@ app.get("/", (req, res) => {
     }
   } else {
     res.sendFile(path.join(__dirname, "public", "index.html"))
+  }
+})
+
+// Get chat rooms created by the current user
+app.get("/api/chatrooms/my-rooms", isAuthenticated, async (req, res) => {
+  try {
+    const rooms = await ChatRoom.find({ createdBy: req.session.userId }).select("name createdAt").lean()
+    res.status(200).json({ rooms })
+  } catch (error) {
+    console.error("Error fetching owned chat rooms:", error)
+    res.status(500).json({ message: "Failed to fetch your chat rooms." })
+  }
+})
+
+// Star/Unstar a message
+app.post("/api/messages/:messageId/star", isAuthenticated, async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.messageId)
+    if (!message) return res.status(404).json({ message: "Message not found" })
+
+    message.isStarred = !message.isStarred
+    await message.save()
+    res.status(200).json({ success: true, isStarred: message.isStarred })
+  } catch (error) {
+    res.status(500).json({ message: "Error toggling star" })
+  }
+})
+
+// Delete a message
+app.delete("/api/messages/:messageId", isAuthenticated, async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.messageId)
+    if (!message) return res.status(404).json({ message: "Message not found" })
+
+    // Only allow owner to delete
+    if (message.userId.toString() !== req.session.userId) {
+      return res.status(403).json({ message: "You can only delete your own messages" })
+    }
+
+    await Message.findByIdAndDelete(req.params.messageId)
+    res.status(200).json({ success: true, message: "Message deleted" })
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting message" })
   }
 })
 

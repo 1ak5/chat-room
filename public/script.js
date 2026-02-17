@@ -153,10 +153,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const createChatButton = document.getElementById("create-chat-button")
       const joinChatButton = document.getElementById("join-chat-button")
       const logoutButton = document.getElementById("logout-button")
-      const currentUsernameDisplay = document.getElementById("current-username-display")
-      const createErrorMessage = document.getElementById("create-error-message")
-      const joinErrorMessage = document.getElementById("join-error-message")
-
       const fetchAndDisplayUsername = async () => {
         try {
           const response = await fetch("/api/user/me")
@@ -178,7 +174,37 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
+      const fetchMyRooms = async () => {
+        try {
+          const response = await fetch("/api/chatrooms/my-rooms")
+          if (response.ok) {
+            const data = await response.json()
+            const myRoomsSection = document.getElementById("my-rooms-section")
+            const myRoomsList = document.getElementById("my-rooms-list")
+
+            if (data.rooms && data.rooms.length > 0) {
+              myRoomsSection.style.display = "block"
+              myRoomsList.innerHTML = ""
+              data.rooms.forEach(room => {
+                const roomItem = document.createElement("div")
+                roomItem.className = "my-room-item"
+                roomItem.innerHTML = `<span class="my-room-name">${room.name}</span>`
+                roomItem.onclick = () => {
+                  document.getElementById("join-chat-name").value = room.name
+                  // Switch to join tab
+                  tabButtons[1].click()
+                }
+                myRoomsList.appendChild(roomItem)
+              })
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching my rooms:", error)
+        }
+      }
+
       fetchAndDisplayUsername()
+      fetchMyRooms()
 
       tabButtons.forEach((button) => {
         button.addEventListener("click", () => {
@@ -479,10 +505,18 @@ document.addEventListener("DOMContentLoaded", () => {
       let currentY = 0
       let isDragging = false
 
+      // Long-press detection for context menu
+      let holdTimer = null
+
       messageBubble.addEventListener("touchstart", (e) => {
         startX = e.touches[0].clientX
         startY = e.touches[0].clientY
         isDragging = false
+
+        // Start hold timer for context menu
+        holdTimer = setTimeout(() => {
+          showContextMenu(e.touches[0].clientX, e.touches[0].clientY, msg)
+        }, 500)
       })
 
       messageBubble.addEventListener("touchmove", (e) => {
@@ -494,55 +528,33 @@ document.addEventListener("DOMContentLoaded", () => {
         const diffX = currentX - startX
         const diffY = currentY - startY
 
+        // If moved significantly, cancel hold timer
+        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+          clearTimeout(holdTimer)
+        }
+
         // Check if it's a horizontal swipe (more horizontal than vertical)
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
           isDragging = true
-          e.preventDefault() // Prevent scrolling
-
-          // Only allow right swipe (positive diffX)
+          e.preventDefault()
           if (diffX > 0) {
             messageBubble.style.transform = `translateX(${Math.min(diffX, 100)}px)`
-            if (diffX > 50) {
-              messageBubble.classList.add("swiping")
-            } else {
-              messageBubble.classList.remove("swiping")
-            }
+            if (diffX > 50) messageBubble.classList.add("swiping")
+            else messageBubble.classList.remove("swiping")
           }
         }
       })
 
       messageBubble.addEventListener("touchend", (e) => {
+        clearTimeout(holdTimer)
         if (isDragging) {
           const diffX = currentX - startX
-
-          // If swiped enough to the right, trigger reply
-          if (diffX > 50) {
-            setReplyTo(msg)
-          }
-
-          // Reset transform
+          if (diffX > 50) setReplyTo(msg)
           messageBubble.style.transform = ""
           messageBubble.classList.remove("swiping")
-
           isDragging = false
-          startX = 0
-          startY = 0
-          currentX = 0
-          currentY = 0
         } else {
-          // Handle double-tap for like (only if not dragging)
-          e.preventDefault()
-          tapCount++
-
-          if (tapCount === 1) {
-            tapTimer = setTimeout(() => {
-              tapCount = 0
-            }, 300)
-          } else if (tapCount === 2) {
-            clearTimeout(tapTimer)
-            tapCount = 0
-            messageBubble.classList.toggle("liked")
-          }
+          // Double tap like logic
         }
       })
 
@@ -558,6 +570,69 @@ document.addEventListener("DOMContentLoaded", () => {
       })
 
       return messageBubble
+    }
+
+    const showContextMenu = (x, y, msg) => {
+      // Remove any existing menu
+      const existingMenu = document.querySelector('.message-context-menu')
+      if (existingMenu) existingMenu.remove()
+
+      const menu = document.createElement('div')
+      menu.className = 'message-context-menu'
+      menu.style.left = `${Math.min(x, window.innerWidth - 150)}px`
+      menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`
+
+      const items = [
+        { label: 'Reply', icon: '💬', action: () => setReplyTo(msg) },
+        { label: msg.isStarred ? 'Unstar' : 'Star', icon: '⭐', action: () => starMessage(msg._id) },
+      ]
+
+      // Only show delete for own messages
+      if (msg.userId === currentUserId) {
+        items.push({ label: 'Delete', icon: '🗑️', action: () => deleteMessage(msg._id), className: 'delete' })
+      }
+
+      items.forEach(item => {
+        const div = document.createElement('div')
+        div.className = `context-menu-item ${item.className || ''}`
+        div.innerHTML = `<span>${item.icon}</span> ${item.label}`
+        div.onclick = () => {
+          item.action()
+          menu.remove()
+        }
+        menu.appendChild(div)
+      })
+
+      document.body.appendChild(menu)
+
+      // Close menu on click elsewhere
+      const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+          menu.remove()
+          document.removeEventListener('touchstart', closeMenu)
+          document.removeEventListener('click', closeMenu)
+        }
+      }
+      setTimeout(() => {
+        document.addEventListener('touchstart', closeMenu)
+        document.addEventListener('click', closeMenu)
+      }, 100)
+    }
+
+    const starMessage = async (messageId) => {
+      try {
+        await fetch(`/api/messages/${messageId}/star`, { method: 'POST' })
+        fetchMessages() // Refresh
+      } catch (error) { console.error(error) }
+    }
+
+    const deleteMessage = async (messageId) => {
+      if (confirm('Delete this message?')) {
+        try {
+          await fetch(`/api/messages/${messageId}`, { method: 'DELETE' })
+          fetchMessages() // Refresh
+        } catch (error) { console.error(error) }
+      }
     }
 
     const setReplyTo = (msg) => {
@@ -754,16 +829,34 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Mobile: Hide header while typing
+    // Mobile: Improved keyboard interaction
+    const chatContainer = document.querySelector('.chat-container');
+
+    // Use VisualViewport API if available for better mobile keyboard detection
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        const isKeyboardOpen = window.visualViewport.height < window.innerHeight * 0.8;
+        if (isKeyboardOpen) {
+          chatContainer.classList.add('is-typing');
+          scrollToBottom();
+        } else {
+          chatContainer.classList.remove('is-typing');
+        }
+      });
+    }
+
     messageInput.addEventListener('focus', () => {
-      document.querySelector('.chat-container').classList.add('is-typing');
+      chatContainer.classList.add('is-typing');
+      setTimeout(scrollToBottom, 300);
     });
 
     messageInput.addEventListener('blur', () => {
-      // Small delay to prevent flickering if switching between inputs
+      // Small delay, but only if not refocusing
       setTimeout(() => {
-        document.querySelector('.chat-container').classList.remove('is-typing');
-      }, 100);
+        if (document.activeElement !== messageInput) {
+          chatContainer.classList.remove('is-typing');
+        }
+      }, 200);
     });
 
     messageForm.addEventListener("submit", async (e) => {
