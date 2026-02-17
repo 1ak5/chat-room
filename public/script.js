@@ -511,15 +511,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Long-press detection for context menu
       let holdTimer = null
+      let holdTriggered = false
 
       messageBubble.addEventListener("touchstart", (e) => {
         startX = e.touches[0].clientX
         startY = e.touches[0].clientY
         isDragging = false
+        holdTriggered = false
 
         // Start hold timer for context menu
+        const touchX = e.touches[0].clientX
+        const touchY = e.touches[0].clientY
         holdTimer = setTimeout(() => {
-          showContextMenu(e.touches[0].clientX, e.touches[0].clientY, msg)
+          holdTriggered = true
+          showContextMenu(touchX, touchY, msg)
         }, 500)
       })
 
@@ -551,14 +556,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
       messageBubble.addEventListener("touchend", (e) => {
         clearTimeout(holdTimer)
+        if (holdTriggered) {
+          // Hold was triggered, context menu is shown, do nothing else
+          holdTriggered = false
+          return
+        }
         if (isDragging) {
           const diffX = currentX - startX
           if (diffX > 50) setReplyTo(msg)
           messageBubble.style.transform = ""
           messageBubble.classList.remove("swiping")
           isDragging = false
-        } else {
-          // Double tap like logic
         }
       })
 
@@ -567,10 +575,10 @@ document.addEventListener("DOMContentLoaded", () => {
         messageBubble.classList.toggle("liked")
       })
 
-      // For desktop right-click (reply)
+      // For desktop right-click (show context menu)
       messageBubble.addEventListener("contextmenu", (e) => {
         e.preventDefault()
-        setReplyTo(msg)
+        showContextMenu(e.clientX, e.clientY, msg)
       })
 
       return messageBubble
@@ -836,14 +844,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Mobile: Improved keyboard interaction
     const chatContainer = document.querySelector('.chat-container');
 
-    // Use VisualViewport API if available for better mobile keyboard detection
+    // Use VisualViewport API for precise mobile keyboard detection
     if (window.visualViewport) {
+      let initialHeight = window.visualViewport.height;
       window.visualViewport.addEventListener('resize', () => {
-        const isKeyboardOpen = window.visualViewport.height < window.innerHeight * 0.8;
+        const isKeyboardOpen = window.visualViewport.height < initialHeight * 0.75;
         if (isKeyboardOpen) {
           chatContainer.classList.add('is-typing');
           scrollToBottom();
         } else {
+          // Keyboard closed — immediately restore header
           chatContainer.classList.remove('is-typing');
         }
       });
@@ -855,10 +865,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     messageInput.addEventListener('blur', () => {
-      // Always remove class on blur unless it's a very fast switch
-      setTimeout(() => {
-        chatContainer.classList.remove('is-typing');
-      }, 250);
+      // Immediately restore header on blur
+      chatContainer.classList.remove('is-typing');
     });
 
     messageForm.addEventListener("submit", async (e) => {
@@ -866,189 +874,214 @@ document.addEventListener("DOMContentLoaded", () => {
       const content = messageInput.value.trim()
       if ((!content && !selectedImage) || !currentChatRoomId) return
 
-      sendButton.disabled = true
-      sendButton.classList.add('loading')
+      const currentReply = replyingTo
+      const imageToSend = selectedImage
 
-      // Prepare message data
-      const messageData = {
-        content: content || '📷 Image',
-        replyTo: replyingTo ? replyingTo._id : null,
-        messageType: 'text',
-        imageData: null,
-        contentType: null
-      };
-
-      let imageDataUrl = null;
-
-      // If there's an image, process it first
-      if (selectedImage) {
-        // Create temp preview using FileReader
-        const reader = new FileReader();
-        imageDataUrl = await new Promise((resolve) => {
-          reader.onload = (e) => resolve(e.target.result);
-          reader.readAsDataURL(selectedImage);
-        });
-
-        // Create FormData for upload
-        const formData = new FormData();
-        formData.append('image', selectedImage);
-
-        try {
-          const response = await fetch('/api/upload-image', {
-            method: 'POST',
-            body: formData
-          });
-
-          if (!response.ok) {
-            throw new Error('Image upload failed');
-          }
-
-          const imageInfo = await response.json();
-          messageData.imageData = imageInfo.imageData;
-          messageData.contentType = imageInfo.contentType;
-          messageData.messageType = 'image';
-        } catch (error) {
-          console.error('Error uploading image:', error);
-          alert('Failed to upload image. Please try again.');
-          sendButton.disabled = false;
-          sendButton.textContent = "Send";
-          return;
-        }
+      // Clear input IMMEDIATELY — WhatsApp style
+      messageInput.value = ""
+      clearReply()
+      if (imageToSend) {
+        selectedImage = null
+        const imageUpload = document.getElementById('image-upload')
+        imageUpload.value = ''
+        messageInput.placeholder = 'Type your message...'
       }
 
-      // Create temporary message for immediate display
+      // If there's an image, get local preview URL instantly
+      let localPreviewUrl = null
+      if (imageToSend) {
+        const reader = new FileReader()
+        localPreviewUrl = await new Promise((resolve) => {
+          reader.onload = (ev) => resolve(ev.target.result)
+          reader.readAsDataURL(imageToSend)
+        })
+      }
+
+      // Create temp message and show in chat IMMEDIATELY
+      const tempId = `temp-${Date.now()}`
       const tempMessage = {
-        _id: `temp-${Date.now()}`,
+        _id: tempId,
         userId: currentUserId,
         username: currentUsername,
-        content: messageData.content,
-        messageType: messageData.messageType,
-        // Use the temp preview URL first, then switch to compressed version when ready
-        imageData: imageDataUrl || messageData.imageData,
+        content: content || (imageToSend ? '📷 Image' : ''),
+        messageType: imageToSend ? 'image' : 'text',
+        imageData: localPreviewUrl,
         timestamp: new Date().toISOString(),
         sendingStatus: 'sending',
-        replyTo: replyingTo
-          ? {
-            _id: replyingTo._id,
-            username: replyingTo.username,
-            content: replyingTo.content,
-          }
+        replyTo: currentReply
+          ? { _id: currentReply._id, username: currentReply.username, content: currentReply.content }
           : null,
-      };
-
-      // Clear input immediately for better UX
-      messageInput.value = ""
-      clearReply() // Clear reply after sending
-
-      // Reset image selection if any
-      if (selectedImage) {
-        selectedImage = null;
-        const imageUpload = document.getElementById('image-upload');
-        imageUpload.value = '';
-        messageInput.placeholder = 'Type your message...';
       }
 
-      // Add message to UI immediately with sending status
-      const optimisticMessageElement = createMessageBubbleElement(tempMessage);
-      optimisticMessageElement.dataset.tempId = tempMessage._id;
-      optimisticMessageElement.classList.add('sending');
+      const optimisticEl = createMessageBubbleElement(tempMessage)
+      optimisticEl.dataset.tempId = tempId
+      optimisticEl.classList.add('sending')
 
-      // Add loading dots for text messages
-      const statusContainer = optimisticMessageElement.querySelector('.message-status-container');
-      const loadingStatus = document.createElement('div');
-      loadingStatus.classList.add('message-status');
-
-      const loadingDots = document.createElement('div');
-      loadingDots.classList.add('loading-dots');
-      loadingDots.innerHTML = '<span></span><span></span><span></span>';
-
-      loadingStatus.appendChild(loadingDots);
-      statusContainer.insertBefore(loadingStatus, statusContainer.firstChild);
-
-      // For images, add loading spinner
-      if (messageData.messageType === 'image') {
-        const imageContainer = optimisticMessageElement.querySelector('.message-image-container');
+      // Add progress overlay for images
+      if (imageToSend) {
+        const imageContainer = optimisticEl.querySelector('.message-image-container')
         if (imageContainer) {
-          const loadingSpinner = document.createElement('div');
-          loadingSpinner.classList.add('image-loading');
-          imageContainer.appendChild(loadingSpinner);
+          const progressOverlay = document.createElement('div')
+          progressOverlay.className = 'image-upload-progress'
+          progressOverlay.innerHTML = `
+            <div class="upload-progress-ring">
+              <svg viewBox="0 0 36 36">
+                <path class="progress-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="progress-fill" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" stroke-dasharray="0, 100" />
+              </svg>
+              <span class="progress-text">0%</span>
+            </div>
+          `
+          imageContainer.appendChild(progressOverlay)
+        }
+      } else {
+        // Text message loading dots
+        const statusContainer = optimisticEl.querySelector('.message-status-container')
+        const loadingStatus = document.createElement('div')
+        loadingStatus.classList.add('message-status')
+        const loadingDots = document.createElement('div')
+        loadingDots.classList.add('loading-dots')
+        loadingDots.innerHTML = '<span></span><span></span><span></span>'
+        loadingStatus.appendChild(loadingDots)
+        statusContainer.insertBefore(loadingStatus, statusContainer.firstChild)
+      }
+
+      messagesContainer.appendChild(optimisticEl)
+      scrollToBottom()
+      messageInput.focus()
+
+      // Now do the actual upload + send in the background
+      const doSend = async () => {
+        const messageData = {
+          content: content || (imageToSend ? '📷 Image' : ''),
+          replyTo: currentReply ? currentReply._id : null,
+          messageType: 'text',
+          imageData: null,
+          contentType: null
+        }
+
+        // Upload image with progress tracking
+        if (imageToSend) {
+          try {
+            const imageInfo = await uploadImageWithProgress(imageToSend, tempId)
+            messageData.imageData = imageInfo.imageData
+            messageData.contentType = imageInfo.contentType
+            messageData.messageType = 'image'
+          } catch (error) {
+            console.error('Image upload failed:', error)
+            markTempMessageFailed(tempId, 'Upload failed')
+            return
+          }
+        }
+
+        // Send message to server
+        try {
+          sendButton.disabled = true
+          const response = await fetch(`/api/messages/${currentChatRoomId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(messageData),
+          })
+
+          if (response.status === 401 || response.status === 403) {
+            window.location.href = "/chat-rooms"
+            return
+          }
+          if (!response.ok) throw new Error("Failed to send message")
+
+          // Success: update temp bubble
+          const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempId}"]`)
+          if (tempBubble) {
+            tempBubble.classList.remove('sending')
+
+            // Remove progress overlay
+            const progressOverlay = tempBubble.querySelector('.image-upload-progress')
+            if (progressOverlay) progressOverlay.remove()
+
+            // Remove loading dots
+            const loadingStatus = tempBubble.querySelector('.loading-dots')?.parentElement
+            if (loadingStatus) {
+              const checkmark = document.createElement('span')
+              checkmark.textContent = '✓'
+              checkmark.style.color = '#4CAF50'
+              loadingStatus.replaceWith(checkmark)
+            }
+
+            // Remove image loading spinner
+            const loadingSpinner = tempBubble.querySelector('.image-loading')
+            if (loadingSpinner) loadingSpinner.remove()
+
+            setTimeout(() => { tempBubble.remove() }, 500)
+          }
+        } catch (error) {
+          console.error("Error sending message:", error)
+          markTempMessageFailed(tempId, 'Failed to send')
+        } finally {
+          sendButton.disabled = false
         }
       }
 
-      messagesContainer.appendChild(optimisticMessageElement);
-      scrollToBottom();
-
-      messageInput.focus();
-
-      try {
-        const response = await fetch(`/api/messages/${currentChatRoomId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(messageData),
-        })
-
-        if (response.status === 401 || response.status === 403) {
-          window.location.href = "/chat-rooms"
-          return
-        }
-        if (!response.ok) {
-          throw new Error("Failed to send message")
-        }
-
-        // Update temporary message to show it's been sent
-        const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempMessage._id}"]`)
-        if (tempBubble) {
-          tempBubble.classList.remove('sending');
-
-          // Remove loading dots
-          const loadingStatus = tempBubble.querySelector('.loading-dots')?.parentElement;
-          if (loadingStatus) {
-            const checkmark = document.createElement('span');
-            checkmark.textContent = '✓';
-            checkmark.style.color = '#4CAF50';
-            loadingStatus.replaceWith(checkmark);
-          }
-
-          // Remove image loading spinner if present
-          const loadingSpinner = tempBubble.querySelector('.image-loading');
-          if (loadingSpinner) {
-            loadingSpinner.remove();
-          }
-
-          // Keep the message visible for a moment before it gets replaced by the real one
-          setTimeout(() => {
-            tempBubble.remove();
-          }, 500);
-        }
-      } catch (error) {
-        console.error("Error sending message:", error);
-        const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempMessage._id}"]`);
-        if (tempBubble) {
-          tempBubble.classList.remove('sending');
-
-          // Show error state
-          const loadingStatus = tempBubble.querySelector('.loading-dots')?.parentElement;
-          if (loadingStatus) {
-            loadingStatus.textContent = '❌ Failed to send';
-            loadingStatus.style.color = 'var(--red-error)';
-          }
-
-          // Remove image loading spinner if present
-          const loadingSpinner = tempBubble.querySelector('.image-loading');
-          if (loadingSpinner) {
-            loadingSpinner.remove();
-          }
-
-          // Remove after showing error
-          setTimeout(() => {
-            tempBubble.remove();
-          }, 3000);
-        }
-      } finally {
-        sendButton.disabled = false;
-        sendButton.classList.remove('loading')
-      }
+      // Fire and forget — non-blocking
+      doSend()
     })
+
+    // Upload image with XHR for progress tracking
+    const uploadImageWithProgress = (file, tempId) => {
+      return new Promise((resolve, reject) => {
+        const formData = new FormData()
+        formData.append('image', file)
+
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', '/api/upload-image')
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100)
+            const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempId}"]`)
+            if (tempBubble) {
+              const progressFill = tempBubble.querySelector('.progress-fill')
+              const progressText = tempBubble.querySelector('.progress-text')
+              if (progressFill) progressFill.setAttribute('stroke-dasharray', `${percent}, 100`)
+              if (progressText) progressText.textContent = `${percent}%`
+            }
+          }
+        }
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(JSON.parse(xhr.responseText))
+          } else {
+            reject(new Error('Upload failed'))
+          }
+        }
+
+        xhr.onerror = () => reject(new Error('Network error'))
+        xhr.send(formData)
+      })
+    }
+
+    // Mark a temp message as failed
+    const markTempMessageFailed = (tempId, errorText) => {
+      const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempId}"]`)
+      if (tempBubble) {
+        tempBubble.classList.remove('sending')
+
+        const progressOverlay = tempBubble.querySelector('.image-upload-progress')
+        if (progressOverlay) progressOverlay.remove()
+
+        const loadingStatus = tempBubble.querySelector('.loading-dots')?.parentElement
+        if (loadingStatus) {
+          loadingStatus.textContent = `❌ ${errorText}`
+          loadingStatus.style.color = 'var(--red-error)'
+        }
+
+        const loadingSpinner = tempBubble.querySelector('.image-loading')
+        if (loadingSpinner) loadingSpinner.remove()
+
+        setTimeout(() => { tempBubble.remove() }, 5000)
+      }
+      sendButton.disabled = false
+    }
 
     // Cancel reply button
     cancelReplyBtn.addEventListener("click", clearReply)

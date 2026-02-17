@@ -1209,3 +1209,54 @@ h3,
   font-weight: 600;
   color: var(--primary-color);
 }
+
+/* Image Upload Progress Overlay */
+.image-upload-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  z-index: 10;
+}
+
+.upload-progress-ring {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-progress-ring svg {
+  width: 60px;
+  height: 60px;
+  transform: rotate(-90deg);
+}
+
+.upload-progress-ring .progress-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 3;
+}
+
+.upload-progress-ring .progress-fill {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.3s ease;
+}
+
+.upload-progress-ring .progress-text {
+  position: absolute;
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: 700;
+}
