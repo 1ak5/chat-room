@@ -678,8 +678,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       messagesCache = messages
 
-      // Save any temp (optimistic) bubbles before clearing
-      const tempBubbles = messagesContainer.querySelectorAll('[data-temp-id]')
+      // Save any temp (optimistic) bubbles before clearing - ONLY those still sending
+      const tempBubbles = messagesContainer.querySelectorAll('[data-temp-id].sending')
       const savedTempBubbles = Array.from(tempBubbles).map(el => el.cloneNode(true))
 
       messagesContainer.innerHTML = ""
