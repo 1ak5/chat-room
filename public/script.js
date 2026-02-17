@@ -153,6 +153,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const createChatButton = document.getElementById("create-chat-button")
       const joinChatButton = document.getElementById("join-chat-button")
       const logoutButton = document.getElementById("logout-button")
+      const currentUsernameDisplay = document.getElementById("current-username-display")
+      const createErrorMessage = document.getElementById("create-error-message")
+      const joinErrorMessage = document.getElementById("join-error-message")
+
       const fetchAndDisplayUsername = async () => {
         try {
           const response = await fetch("/api/user/me")
@@ -851,12 +855,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     messageInput.addEventListener('blur', () => {
-      // Small delay, but only if not refocusing
+      // Always remove class on blur unless it's a very fast switch
       setTimeout(() => {
-        if (document.activeElement !== messageInput) {
-          chatContainer.classList.remove('is-typing');
-        }
-      }, 200);
+        chatContainer.classList.remove('is-typing');
+      }, 250);
     });
 
     messageForm.addEventListener("submit", async (e) => {
