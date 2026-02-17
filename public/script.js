@@ -321,13 +321,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         replyDiv.appendChild(replyUsernameSpan)
         replyDiv.appendChild(replyContentSpan)
-        
+
         // Add click handler to scroll to replied message
         replyDiv.addEventListener('click', (e) => {
           e.stopPropagation();
           const targetId = msg.replyTo._id;
           const targetBubble = document.querySelector(`[data-message-id="${targetId}"]`);
-          
+
           if (targetBubble) {
             targetBubble.scrollIntoView({ behavior: 'smooth', block: 'center' });
             targetBubble.classList.add('message-highlight');
@@ -336,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }, 2000);
           }
         });
-        
+
         messageBubble.appendChild(replyDiv)
       }
 
@@ -356,21 +356,21 @@ document.addEventListener("DOMContentLoaded", () => {
         image.classList.add("message-image");
         image.alt = "Shared image";
         image.loading = "lazy";
-        
+
         // Handle image loading states
         const loadingSpinner = document.createElement("div");
         loadingSpinner.classList.add("image-loading");
         imageContainer.appendChild(loadingSpinner);
-        
+
         // Use the image data
         image.src = msg.imageData;
-        
+
         // Remove loading spinner once image is loaded
         image.onload = () => {
           loadingSpinner.remove();
           image.style.opacity = "1";
         };
-        
+
         // Handle image load error
         image.onerror = () => {
           loadingSpinner.remove();
@@ -384,19 +384,19 @@ document.addEventListener("DOMContentLoaded", () => {
             // Create fullscreen overlay
             const overlay = document.createElement('div');
             overlay.className = 'fullscreen-image-overlay';
-            
+
             const fullImage = document.createElement('img');
             fullImage.src = msg.imageData;
             fullImage.className = 'fullscreen-image';
-            
+
             const closeBtn = document.createElement('button');
             closeBtn.className = 'fullscreen-close-btn';
             closeBtn.innerHTML = '×';
-            
+
             overlay.appendChild(fullImage);
             overlay.appendChild(closeBtn);
             document.body.appendChild(overlay);
-            
+
             // Handle close events
             const closeOverlay = () => {
               overlay.classList.add('closing');
@@ -404,21 +404,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.body.removeChild(overlay);
               }, 300);
             };
-            
+
             closeBtn.addEventListener('click', closeOverlay);
             overlay.addEventListener('click', (e) => {
               if (e.target === overlay) closeOverlay();
             });
-            
+
             // Prevent scrolling of background
             document.body.style.overflow = 'hidden';
-            
+
             overlay.addEventListener('transitionend', () => {
               if (!overlay.classList.contains('closing')) {
                 overlay.classList.add('active');
               }
             });
-            
+
             // Re-enable scrolling when overlay is removed
             overlay.addEventListener('animationend', () => {
               if (overlay.classList.contains('closing')) {
@@ -439,7 +439,7 @@ document.addEventListener("DOMContentLoaded", () => {
       timestampSpan.classList.add("message-timestamp")
       const date = new Date(msg.timestamp)
       timestampSpan.textContent = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      
+
       // Add sending status for messages being sent
       if (msg.sendingStatus === 'sending') {
         const statusSpan = document.createElement("span")
@@ -754,6 +754,18 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    // Mobile: Hide header while typing
+    messageInput.addEventListener('focus', () => {
+      document.querySelector('.chat-container').classList.add('is-typing');
+    });
+
+    messageInput.addEventListener('blur', () => {
+      // Small delay to prevent flickering if switching between inputs
+      setTimeout(() => {
+        document.querySelector('.chat-container').classList.remove('is-typing');
+      }, 100);
+    });
+
     messageForm.addEventListener("submit", async (e) => {
       e.preventDefault()
       const content = messageInput.value.trim()
@@ -772,7 +784,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       let imageDataUrl = null;
-      
+
       // If there's an image, process it first
       if (selectedImage) {
         // Create temp preview using FileReader
@@ -781,11 +793,11 @@ document.addEventListener("DOMContentLoaded", () => {
           reader.onload = (e) => resolve(e.target.result);
           reader.readAsDataURL(selectedImage);
         });
-        
+
         // Create FormData for upload
         const formData = new FormData();
         formData.append('image', selectedImage);
-        
+
         try {
           const response = await fetch('/api/upload-image', {
             method: 'POST',
@@ -822,17 +834,17 @@ document.addEventListener("DOMContentLoaded", () => {
         sendingStatus: 'sending',
         replyTo: replyingTo
           ? {
-              _id: replyingTo._id,
-              username: replyingTo.username,
-              content: replyingTo.content,
-            }
+            _id: replyingTo._id,
+            username: replyingTo.username,
+            content: replyingTo.content,
+          }
           : null,
       };
 
       // Clear input immediately for better UX
       messageInput.value = ""
       clearReply() // Clear reply after sending
-      
+
       // Reset image selection if any
       if (selectedImage) {
         selectedImage = null;
@@ -845,16 +857,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const optimisticMessageElement = createMessageBubbleElement(tempMessage);
       optimisticMessageElement.dataset.tempId = tempMessage._id;
       optimisticMessageElement.classList.add('sending');
-      
+
       // Add loading dots for text messages
       const statusContainer = optimisticMessageElement.querySelector('.message-status-container');
       const loadingStatus = document.createElement('div');
       loadingStatus.classList.add('message-status');
-      
+
       const loadingDots = document.createElement('div');
       loadingDots.classList.add('loading-dots');
       loadingDots.innerHTML = '<span></span><span></span><span></span>';
-      
+
       loadingStatus.appendChild(loadingDots);
       statusContainer.insertBefore(loadingStatus, statusContainer.firstChild);
 
@@ -870,7 +882,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       messagesContainer.appendChild(optimisticMessageElement);
       scrollToBottom();
-      
+
       messageInput.focus();
 
       try {
@@ -892,7 +904,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempMessage._id}"]`)
         if (tempBubble) {
           tempBubble.classList.remove('sending');
-          
+
           // Remove loading dots
           const loadingStatus = tempBubble.querySelector('.loading-dots')?.parentElement;
           if (loadingStatus) {
@@ -918,7 +930,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const tempBubble = messagesContainer.querySelector(`[data-temp-id="${tempMessage._id}"]`);
         if (tempBubble) {
           tempBubble.classList.remove('sending');
-          
+
           // Show error state
           const loadingStatus = tempBubble.querySelector('.loading-dots')?.parentElement;
           if (loadingStatus) {
