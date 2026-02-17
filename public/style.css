@@ -626,19 +626,12 @@ h3,
 .chat-main {
   flex-grow: 1;
   padding: 20px;
-  overflow-y: auto;
+  overflow: hidden;
+  /* Changed from auto */
   background-color: var(--bg-color);
   display: flex;
   flex-direction: column;
   position: relative;
-
-  /* Hide scrollbar but keep functionality */
-  &::-webkit-scrollbar {
-    display: none;
-  }
-
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 
 .messages-container {
@@ -646,9 +639,12 @@ h3,
   flex-direction: column;
   gap: 8px;
   /* Reduced from 12px for denser chat */
-  padding-bottom: 10px;
+  padding-bottom: 20px;
+  /* Added padding at bottom */
   flex-grow: 1;
   padding-top: 10px;
+  overflow-y: auto;
+  /* Enable scrolling here */
 
   /* Hide scrollbar for Chrome, Safari and Opera */
   &::-webkit-scrollbar {
