@@ -1045,9 +1045,22 @@ h3,
     width: 90%;
   }
 
+  body.chat-body {
+    overflow: hidden;
+    /* Prevent body scroll behind fixed container */
+  }
+
   .chat-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
+    height: 100dvh;
+    /* Dynamic viewport height */
     height: 100%;
+    /* Fallback */
     margin: 0;
     border-radius: 0;
     border: none;
@@ -1058,6 +1071,8 @@ h3,
   .chat-header {
     padding: 10px 15px;
     min-height: 50px;
+    flex-shrink: 0;
+    /* Never compress the header */
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
@@ -1079,7 +1094,6 @@ h3,
 
   .online-users-list {
     display: none;
-    /* Keep users hidden to save space */
   }
 
   .logout-button,
@@ -1088,19 +1102,17 @@ h3,
     font-size: 0.75em;
   }
 
+  /* Chat main takes all remaining space */
+  .chat-main {
+    flex: 1;
+    min-height: 0;
+    /* Allow flex child to shrink properly */
+    overflow: hidden;
+  }
+
   /* Keyboard interaction: Hide header while typing */
   .chat-container.is-typing .chat-header {
     display: none;
-  }
-
-  /* Make chat area use full height when typing */
-  .chat-container.is-typing .chat-main {
-    height: 100%;
-  }
-
-  .chat-container.is-typing .chat-footer {
-    padding-bottom: 20px;
-    /* Slight extra lift when typing */
   }
 
   .message-bubble {
@@ -1108,6 +1120,8 @@ h3,
   }
 
   .chat-footer {
+    flex-shrink: 0;
+    /* Never compress the footer */
     padding: 10px;
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
     background: var(--bg-color);

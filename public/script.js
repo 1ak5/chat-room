@@ -869,6 +869,21 @@ document.addEventListener("DOMContentLoaded", () => {
       chatContainer.classList.remove('is-typing');
     });
 
+    // Manual fallback: scroll-to-bottom button also restores header
+    scrollToBottomBtn.addEventListener('click', () => {
+      chatContainer.classList.remove('is-typing');
+      scrollToBottom();
+    });
+
+    // Tapping on messages area restores header (user scrolled away from keyboard)
+    messagesContainer.addEventListener('touchstart', () => {
+      if (chatContainer.classList.contains('is-typing')) {
+        // Blur the input to close keyboard
+        messageInput.blur();
+        chatContainer.classList.remove('is-typing');
+      }
+    }, { passive: true });
+
     messageForm.addEventListener("submit", async (e) => {
       e.preventDefault()
       const content = messageInput.value.trim()
